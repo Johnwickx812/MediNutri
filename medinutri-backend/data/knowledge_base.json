@@ -1,0 +1,292 @@
+[
+    {
+        "category": "Diabetes Diet",
+        "keywords": [
+            "idli",
+            "diabetes",
+            "sugar",
+            "diabetic"
+        ],
+        "question": "Is Idli good for diabetes?",
+        "answer": "Idli is a healthy steamed food, but it is made from rice which has a high glycemic index. For diabetes management, limit yourself to 2-3 idlis and pair them with sambar (lentils) and coconut chutney to balance the blood sugar impact. Rava idli or Oats idli are lower glycemic alternatives."
+    },
+    {
+        "category": "Diabetes Diet",
+        "keywords": [
+            "rice",
+            "chapati",
+            "roti",
+            "better"
+        ],
+        "question": "Is Chapati better than Rice for diabetes?",
+        "answer": "Yes, whole wheat Chapati generally has a lower glycemic index than white rice and contains more fiber, which helps regulate blood sugar. However, portion control is key. If you prefer rice, try brown rice or Kerala matta rice."
+    },
+    {
+        "category": "Diabetes Diet",
+        "keywords": [
+            "mango",
+            "fruit",
+            "diabetic",
+            "safe"
+        ],
+        "question": "Can diabetics eat Mango?",
+        "answer": "Mangoes are high in natural sugars. Diabetics can enjoy them in moderation (1-2 slices) occasionally, preferably post-workout or during the day, but avoid eating them with heavy meals."
+    },
+    {
+        "category": "Diabetes Diet",
+        "keywords": [
+            "watermelon",
+            "sugar",
+            "spike"
+        ],
+        "question": "Can I eat Watermelon?",
+        "answer": "Watermelon has a high Glycemic Index (GI) but a low Glycemic Load. You can eat it in moderation (1 cup), but avoid drinking watermelon juice as it concentrates the sugar and removes fiber."
+    },
+    {
+        "category": "Hypertension",
+        "keywords": [
+            "blood pressure",
+            "bp",
+            "salt",
+            "hypertension",
+            "salt intake"
+        ],
+        "question": "How to manage high blood pressure with diet?",
+        "answer": "The most important step is reducing salt (sodium) intake. Avoid pickles, papads, and processed snacks. Include potassium-rich foods like bananas, spinach, and coconut water. The DASH diet (Dietary Approaches to Stop Hypertension) which focuses on fruits, vegetables, and lean protein is highly recommended."
+    },
+    {
+        "category": "Thyroid",
+        "keywords": [
+            "thyroid",
+            "hypothyroidism",
+            "cabbage",
+            "cauliflower",
+            "soy"
+        ],
+        "question": "What foods should I avoid for Hypothyroidism?",
+        "answer": "If you have hypothyroidism, you should limit goitrogenic foods like raw cabbage, cauliflower, broccoli, and kale, as they can interfere with thyroid hormone production. Cooking these vegetables reduces this effect. Also, limit soy products and ensure adequate iodine intake."
+    },
+    {
+        "category": "PCOD/PCOS",
+        "keywords": [
+            "pcod",
+            "pcos",
+            "period",
+            "hormone",
+            "weight gain"
+        ],
+        "question": "What is the best diet for PCOD?",
+        "answer": "For PCOD/PCOS, focus on a Low Glycemic Index (GI) diet to manage insulin resistance. Include plenty of fiber (whole grains, vegetables), protein (dal, sprouts, lean meat), and healthy fats (nuts, seeds). Avoid refined sugar, maida, and processed foods. Regular physical activity is equally important."
+    },
+    {
+        "category": "General Nutrition",
+        "keywords": [
+            "ghee",
+            "fat",
+            "healthy",
+            "heart"
+        ],
+        "question": "Is Ghee good for health?",
+        "answer": "Cow's Ghee is rich in healthy fats and vitamins A, D, E, and K. 1-2 teaspoons a day is beneficial for gut health and joint lubrication. However, excessive consumption can increase calorie intake and may affect those with high cholesterol."
+    },
+    {
+        "category": "General Nutrition",
+        "keywords": [
+            "protein",
+            "vegetarian",
+            "sources"
+        ],
+        "question": "What are good vegetarian protein sources?",
+        "answer": "Great vegetarian protein sources include: Dal (Lentils), Paneer, Chickpeas (Chana), Rajma, Soya Chunks, Tofu, Yogurt (Curd), and Nuts like Almonds and Walnuts."
+    },
+    {
+        "category": "General Nutrition",
+        "keywords": [
+            "curd",
+            "yogurt",
+            "night",
+            "cold"
+        ],
+        "question": "Can I eat Curd at night?",
+        "answer": "Yes, curd is good for digestion. However, in Ayurveda, sour curd at night is sometimes restricted if you are prone to colds or coughs. Fresh sweet curd is generally safe."
+    },
+    {
+        "category": "Spices & Herbs",
+        "keywords": [
+            "turmeric",
+            "haldi",
+            "immunity",
+            "inflammation"
+        ],
+        "question": "What are the benefits of Turmeric?",
+        "answer": "Turmeric contains curcumin, which has powerful anti-inflammatory and antioxidant properties. It boosts immunity, helps in wound healing, and may reduce the risk of chronic diseases. Pair it with black pepper to increase curcumin absorption."
+    },
+    {
+        "category": "Spices & Herbs",
+        "keywords": [
+            "ginger",
+            "adrak",
+            "digestion",
+            "nausea"
+        ],
+        "question": "Does ginger help with digestion?",
+        "answer": "Yes, ginger is excellent for digestion. It helps stimulate saliva production, reduces bloating, and is very effective against nausea and morning sickness."
+    },
+    {
+        "category": "Medication FAQ",
+        "keywords": [
+            "empty stomach",
+            "gas",
+            "acidity"
+        ],
+        "question": "Why do some medicines cause acidity?",
+        "answer": "Some medications like painkillers (NSAIDs) or antibiotics can irritate the stomach lining. Doctors often prescribe antacids (like Pantoprazole) specifically to prevent this. Always follow the 'after food' advice if given."
+    },
+    {
+        "category": "Medication FAQ",
+        "keywords": [
+            "alcohol",
+            "drinking",
+            "medicine"
+        ],
+        "question": "Can I drink alcohol while taking medication?",
+        "answer": "It is generally unsafe. Alcohol can increase the risk of side effects like drowsiness, liver damage, or stomach bleeding depending on the drug. Avoid alcohol completely with antibiotics, painkillers, and diabetes meds."
+    },
+    {
+        "category": "Healthy Snacks",
+        "keywords": [
+            "makhana",
+            "lotus seeds",
+            "snack"
+        ],
+        "question": "Is Makhana a healthy snack?",
+        "answer": "Yes, Makhana (Fox Nuts) is an excellent healthy snack. It is low in calories, high in fiber, and rich in protein and calcium. It's a great alternative to fried snacks for weight loss and diabetes."
+    },
+    {
+        "category": "Healthy Snacks",
+        "keywords": [
+            "samosa",
+            "pakora",
+            "calories"
+        ],
+        "question": "Are Samosas and Pakoras very unhealthy?",
+        "answer": "Deep-fried snacks like samosas and pakoras are high in calories, unhealthy fats (trans fats if oil is reused), and refined flour (maida). They should be eaten rarely. Try air-frying or baking them for a healthier version."
+    },
+    {
+        "category": "Heart Health",
+        "keywords": [
+            "egg",
+            "cholesterol",
+            "yolk"
+        ],
+        "question": "Are eggs good for heart patients?",
+        "answer": "Egg whites are excellent protein sources with no cholesterol. The yolk contains cholesterol, but recent studies show 1 yolk a day is okay for most people. If you have high cholesterol, stick to egg whites or consult your doctor."
+    },
+    {
+        "category": "Heart Health",
+        "keywords": [
+            "oil",
+            "cooking",
+            "best"
+        ],
+        "question": "Which oil is best for Indian cooking?",
+        "answer": "For Indian cooking (high heat), use oils with high smoke points like Mustard Oil, Groundnut Oil, or Ghee. Olive oil is great for salads but not for deep frying. Rotating oils is a good practice for optimal health."
+    },
+    {
+        "category": "General Health",
+        "keywords": [
+            "water",
+            "day",
+            "drink"
+        ],
+        "question": "How much water should I drink daily?",
+        "answer": "An average adult needs about 2.5 to 3 liters (8-10 glasses) of water daily. Increase this if you are active or in hot weather. Your urine color is a good indicator: it should be pale yellow."
+    },
+    {
+        "category": "Weight Loss",
+        "keywords": [
+            "lose weight",
+            "fast",
+            "diet"
+        ],
+        "question": "How can I lose weight quickly?",
+        "answer": "Sustainable weight loss happens with a calorie deficit. 1. Reduce sugar and refined carbs (maida). 2. Increase protein intake. 3. Walk 30-45 mins daily. Avoid 'crash diets' as the weight often comes back."
+    },
+    {
+        "category": "Common Foods",
+        "keywords": [
+            "maggi",
+            "noodles",
+            "healthy"
+        ],
+        "question": "Is Maggi permissible to eat?",
+        "answer": "Instant noodles like Maggi are high in sodium and refined flour (maida) with low nutritional value. It is okay as a rare treat, but not as a regular meal. Add vegetables and an egg to make it slightly more balanced."
+    },
+    {
+        "category": "Common Foods",
+        "keywords": [
+            "chai",
+            "tea",
+            "coffee",
+            "empty stomach"
+        ],
+        "question": "Is it bad to drink tea/coffee on an empty stomach?",
+        "answer": "Yes, drinking strong tea or coffee first thing in the morning can trigger acidity and disturb stomach pH for some. It's better to start with a glass of water or eat a biscuit/nut before your morning chai."
+    },
+    {
+        "category": "Kidney Health",
+        "keywords": [
+            "kidney",
+            "stone",
+            "water",
+            "spinach",
+            "tomato"
+        ],
+        "question": "What to eat to avoid kidney stones?",
+        "answer": "To prevent kidney stones, stay well-hydrated (2.5-3L water). Limit high-oxalate foods like spinach, beets, and nuts if you are prone to stones. Reduce salt and animal protein. Ensure enough calcium in your diet as it binds with oxalate in the gut."
+    },
+    {
+        "category": "Digestion",
+        "keywords": [
+            "gas",
+            "bloating",
+            "digestion",
+            "isabgol"
+        ],
+        "question": "How to reduce bloating and gas after meals?",
+        "answer": "To reduce bloating: 1. Eat slowly and chew well. 2. Avoid talking while eating. 3. Walk for 10-15 mins after meals. 4. Ginger tea or Ajwain water can help. 5. Include probiotics like curd."
+    },
+    {
+        "category": "Anemia",
+        "keywords": [
+            "iron",
+            "anemia",
+            "blood",
+            "weakness"
+        ],
+        "question": "What are the best foods for low hemoglobin?",
+        "answer": "To increase hemoglobin, eat iron-iron-rich foods: Green leafy vegetables (spinach), Beetroot, Pomegranate, Jaggery (Gur), Dates, and Organ meats or Red meat if non-vegetarian. Pair iron-rich foods with Vitamin C (Lemon, Amla) for better absorption."
+    },
+    {
+        "category": "Joint Health",
+        "keywords": [
+            "joints",
+            "knee pain",
+            "calcium",
+            "vitamin d"
+        ],
+        "question": "How to improve bone and joint health?",
+        "answer": "For bone health: 1. Ensure adequate Calcium (Milk, Paneer, Ragi). 2. Get Vitamin D (Sunlight, Supplements). 3. Maintain a healthy weight to reduce pressure on joints. 4. Include Omega-3 fatty acids (Walnuts, Flaxseeds, Fish)."
+    },
+    {
+        "category": "Eye Health",
+        "keywords": [
+            "eyes",
+            "vision",
+            "vitamin a",
+            "carrot"
+        ],
+        "question": "What foods are good for eyesight?",
+        "answer": "For better vision, include foods rich in Vitamin A and antioxidants: Carrots, Papaya, Mangoes, Spinach, and Eggs. Fatty fish and nuts like Almonds are also beneficial for eye health."
+    }
+]

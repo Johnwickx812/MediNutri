@@ -1,0 +1,87 @@
+MEDINUTRI PROJECT OVERVIEW
+==========================
+
+PROJECT DESCRIPTION
+-------------------
+MediNutri is a comprehensive health application designed to bridge the gap between nutrition and medication safety. It serves as a full-stack platform that allows users to search for detailed information on foods and drugs, and critically, checks for potential dangerous interactions between them.
+
+The application works by connecting a modern React-based frontend (using Lovable/Vite) with a robust FastAPI backend service that queries a MongoDB database containing structured medical and nutritional datasets.
+
+KEY FEATURES IMPLEMENTED
+------------------------
+1.  **Food Database & Search**
+    *   Search foods by name (e.g., "Apple").
+    *   View nutritional details: Calories, Serving Size.
+    *   Case-insensitive partial matching.
+
+2.  **Drug Database & Search**
+    *   Search medicines by name (e.g., "Aspirin").
+    *   View detailed drug info: Composition, Uses, Side Effects, Manufacturer, Reviews.
+
+3.  **Interaction Checker**
+    *   **Core Safety Feature**: Analyzes pairs of selected Food and Drug.
+    *   Alerts users to interactions (e.g., "Grapefruit + Statins").
+    *   Provides severity levels (High, Moderate, Low) and descriptions.
+
+4.  **Smart Autocomplete**
+    *   Fast prefix-based search suggestions as users type (High-performance regex).
+    *   Works for both Food and Drug searches.
+
+5.  **Technical Stats & Health**
+    *   Database connection monitoring.
+    *   Real-time statistics on total food/drug records.
+
+PROJECT TEXT STACK
+------------------
+*   **Backend**: Python, FastAPI, Uvicorn
+*   **Database**: MongoDB (pymongo driver)
+*   **Frontend**: React, Vite, Shadcn UI (Lovable)
+*   **API Protocol**: REST over HTTP, JSON
+*   **Environment**: Windows, Virtual Environment (venv)
+
+FILE STRUCTURE SUMMARY
+----------------------
+d:/medinutri-/
+├── medinutri-backend/             [Python FastAPI Backend]
+│   ├── app/                       [Application Logic Directory]
+│   ├── data/                      [Data Import/Export Directory]
+│   ├── venv/                      [Python Virtual Environment]
+│   ├── main.py                    [**ENTRY POINT**: API Server & Endpoints]
+│   ├── frontend-integration.js    [Helper Code for connecting Frontend to API]
+│   ├── requirements.txt           [Dependency List]
+│   ├── .env                       [Configuration: DB URLs, Credentials]
+│   ├── README.md                  [Backend Documentation]
+│   ├── alembic/                   [Database Migrations (if needed)]
+│   └── ... (various test files)
+│
+└── medinutri-frontend/            [React/Vite Frontend]
+    ├── node_modules/              [JS Dependencies]
+    ├── public/                    [Static Assets]
+    ├── src/                       [Source Code]
+    │   ├── components/            [React UI Components]
+    │   ├── pages/                 [Route Pages]
+    │   ├── App.tsx                [Main App Component]
+    │   └── ...
+    ├── index.html                 [HTML Entry Point]
+    ├── package.json               [JS Dependency Manifest]
+    ├── vite.config.ts             [Build Configuration]
+    └── ...
+
+REQUIREMENTS
+------------
+*   **System**: Python 3.8+, Node.js 18+
+*   **Database**: MongoDB installed and running on localhost:27017
+*   **Python Libraries**:
+    *   fastapi==0.109.0
+    *   uvicorn==0.27.0
+    *   pymongo==4.6.1
+    *   python-dotenv==1.0.0
+    *   pydantic==2.5.3
+
+STATUS
+------
+*   [x] Backend Server Running (Port 8000)
+*   [x] Database Connected (medinutri)
+*   [x] API Endpoints Completed & Verified
+*   [x] Frontend Server Running (Port 8080)
+*   [x] Integration Code Provided

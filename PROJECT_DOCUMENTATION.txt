@@ -1,0 +1,68 @@
+# MEDINUTRI PROJECT DOCUMENTATION
+================================
+
+1. THE PROBLEM WE SOLVE
+-----------------------
+Modern healthcare often lacks a seamless link between nutrition and medication safety. Many patients are unaware that common foods (like grapefruit, leafy greens, or dairy) can dangerously interact with prescribed medications, either by making them toxic or rendering them ineffective. 
+
+MediNutri addresses this "Interaction Gap" by providing an intelligent, evidence-based platform that alerts users to potential food-drug interactions, side effects, and nutritional safety risks before they occur.
+
+2. THE SOLUTION
+---------------
+MediNutri is a comprehensive health assistant that bridges the gap between pharmacy and the kitchen. It provides:
+*   **Real-time Interaction Checking**: Instantly validates if a food item is safe to consume with specific medications.
+*   **Safety Categorization**: Uses a traffic-light system (Red/Yellow/Green) to indicate severity (High, Moderate, Low).
+*   **Comprehensive Drug Profiles**: Access to side effects, usage guides, and manufacturer details for thousands of medications.
+*   **Regional Food Awareness**: Specifically optimized for Indian dietary habits (including Kerala, Tamil Nadu, and Karnataka staples) while maintaining a global database.
+
+3. KEY FEATURES
+---------------
+*   **Food Database & Search**: Search for foods and view nutritional details (calories, protein, serving sizes).
+*   **Drug Database & Search**: Detailed information on 14,000+ medicines including compositions, uses, and side effects.
+*   **Smart Interaction Checker**: Analyzes pairs of food and drugs using medical literature and fuzzy matching algorithms.
+*   **Batch Check (Meal Planning)**: Verify an entire meal's ingredients against a medication list in one go.
+*   **Autocomplete Search**: High-performance, prefix-based search for 14,000+ medical records and 1,000+ food items.
+*   **Drug Side Effects Explorer**: Detailed safety profiles including "Severe" vs "Common" side effects and pregnancy warnings.
+*   **Health Dashboard**: Personalized tracking of medications, meals, and safety notifications.
+
+4. TECH STACK
+-------------
+*   **Frontend**: 
+    *   React.js with Vite (Fast & Modern UI)
+    *   TypeScript (Type-safe development)
+    *   Shadcn UI & Tailwind CSS (Premium, responsive design)
+    *   Lucide React (Modern iconography)
+*   **Backend**: 
+    *   FastAPI (High-performance Python web framework)
+    *   Uvicorn (ASGI server)
+*   **Database**:
+    *   **PostgreSQL**: Unified primary database for ALL application data, including:
+        *   User accounts and encrypted authentication data.
+        *   Medicine profiles (14,000+ records).
+        *   Food nutritional data and regional specialties.
+        *   Medical interaction logic and severity levels.
+    *   **Consolidated Architecture**: By using a single, robust relational database (PostgreSQL), the application ensures high data integrity, simplified deployment, and standard medical-grade security.
+*   **Security & Auth**:
+    *   JWT (JSON Web Tokens) for secure session management.
+    *   Bcrypt password hashing for user privacy.
+    *   Role-Based Access Control (RBAC).
+
+5. DATASETS USED
+----------------
+The project utilizes several robust datasets to ensure medical and nutritional accuracy:
+*   **Food-Drug Interaction Dataset**: Metadata covering 97+ documented high-risk interactions from medical literature.
+*   **Comprehensive Medicine Details**: A database of 14,000+ unique medications with manufacturer and composition info.
+*   **Side Effects Dataset**: Scraped and cleaned data from Drugs.com covering 2,931+ medications.
+*   **Nutritional Database**: Curated list of common global and regional Indian foods (e.g., Puttu, Appam, Idli, Dosa) with calorie and protein metrics.
+*   **Knowledge Base**: Expert-curated medical insights for specialized health conditions.
+
+6. PROJECT STRUCTURE
+--------------------
+├── medinutri-frontend/     # React source code, components, and UI logic
+├── medinutri-backend/      # FastAPI server with pure PostgreSQL logic
+├── data/                   # Raw CSV/JSON datasets and data processing scripts
+└── start_dev.bat           # One-click startup script for both services
+
+7. MEDICAL DISCLAIMER
+---------------------
+MediNutri provides informational guidance based on available clinical data. It is intended to support, not replace, professional medical advice. Always consult a healthcare provider before making significant dietary or medication changes.

@@ -5,21 +5,22 @@ import json
 import asyncio
 import re
 from fastapi.middleware.cors import CORSMiddleware
-from pymongo import MongoClient, ASCENDING
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from psycopg2.pool import SimpleConnectionPool
 from typing import List, Dict, Any, Optional
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+import bcrypt
 from pydantic import BaseModel, EmailStr
 
 # Load environment variables
 load_dotenv()
 
-# Configuration
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
-DATABASE_NAME = os.getenv("DATABASE_NAME", "medinutri")
+# app instance initialization
 
 app = FastAPI(
     title="MediNutri API",
@@ -27,26 +28,35 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# 3. Enable CORS middleware
+# Enable CORS middleware
+origins = [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "*"  # Fallback for other setups
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# MongoDB Connection
+# PostgreSQL Connection
+POSTGRES_URL = os.getenv("DATABASE_URL")
+pg_pool = None
 try:
-    client = MongoClient(MONGODB_URL)
-    db = client[DATABASE_NAME]
-    # Test connection
-    client.server_info()
-    print(f"Connected to MongoDB: {DATABASE_NAME}")
-    print("Database structure verified: foods, drugs, food_drug_interactions")
+    if POSTGRES_URL:
+        pg_pool = SimpleConnectionPool(1, 20, POSTGRES_URL)
+        print("Connected to PostgreSQL successfully")
+    else:
+        print("DATABASE_URL not found in .env")
 except Exception as e:
-    print(f"MongoDB connection failed: {e}")
-    # We continue to allow app startup, but functionality will fail if DB is down
+    print(f"PostgreSQL connection failed: {e}")
 
 # Auth Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "medinutri-super-secret-key-2024")
@@ -56,18 +66,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-# Collections
-foods_collection = db["foods"]
-drugs_collection = db["drugs"]
-interactions_collection = db["food_drug_interactions"]
-drug_side_effects_collection = db["drug_side_effects"]
-users_collection = db["users"]
-
-# Create indexes
-try:
-    users_collection.create_index([("email", ASCENDING)], unique=True)
-except:
-    pass
+# Database helper (Kept for compatibility during transition if needed, but primarily PG now)
+# (All direct MongoDB collections removed)
 
 # 6. Load Knowledge Base
 knowledge_base = []
@@ -82,19 +82,19 @@ try:
 except Exception as e:
     print(f"Failed to load Knowledge Base: {e}")
 
-# 7. Create database indexes
-try:
-    foods_collection.create_index([("Food", ASCENDING)])
-    drugs_collection.create_index([("Medicine Name", ASCENDING)])
-    interactions_collection.create_index([("food_name", ASCENDING), ("drug_name", ASCENDING)])
-    print("Database indexes created")
-except Exception as e:
-    print(f"Index creation warning: {e}")
+# PostgreSQL Initialization
+# Note: Ensure medinutri_schema.sql has been run on the database
 
 
 import math
 
+
 # --- Pydantic Models for Auth ---
+class UserDataSync(BaseModel):
+    medications: List[Dict[str, Any]] = []
+    meals: List[Dict[str, Any]] = []
+    reminders: Dict[str, Any] = {}
+
 class UserRegister(BaseModel):
     name: str
     email: str
@@ -104,17 +104,43 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
+class UserProfileUpdate(BaseModel):
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    medicalConditions: Optional[List[str]] = None
+    allergies: Optional[List[str]] = None
+    dietPreference: Optional[str] = None
+    cuisinePreference: Optional[str] = None
+    onboardingComplete: Optional[bool] = None
+    profileImage: Optional[str] = None
+
 class Token(BaseModel):
     access_token: str
     token_type: str
     user: Dict[str, Any]
 
+class UserDataSync(BaseModel):
+    medications: List[Dict[str, Any]] = []
+    meals: List[Dict[str, Any]] = []
+    reminders: Dict[str, Any] = {}
+
 # --- Auth Helper Functions ---
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        # Direct bcrypt verification
+        if isinstance(hashed_password, str):
+            hashed_password = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
+    except Exception as e:
+        print(f"Password verification error: {e}")
+        return False
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    # Direct bcrypt hashing
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -126,20 +152,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# Helper: Convert ObjectId to string and handle NaN
-def serialize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
-    if not doc:
-        return doc
-    
-    new_doc = {}
-    for k, v in doc.items():
-        if k == "_id":
-            new_doc[k] = str(v)
-        elif isinstance(v, float) and math.isnan(v):
-            new_doc[k] = None
-        else:
-            new_doc[k] = v
-    return new_doc
+# (serialize_doc removed as MongoDB is no longer used)
 
 
 # 1. Root Endpoint
@@ -169,67 +182,83 @@ async def register(user: UserRegister):
     # Password validation
     if len(user.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+    if len(user.password) > 70:
+        raise HTTPException(status_code=400, detail="Password is too long (max 70 characters)")
     if not any(c.isalpha() for c in user.password):
         raise HTTPException(status_code=400, detail="Password must contain at least one letter")
     if not any(c.isdigit() for c in user.password):
         raise HTTPException(status_code=400, detail="Password must contain at least one number")
 
-    # Check if user exists
-    if users_collection.find_one({"email": user.email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create new user
-    new_user = {
-        "name": user.name,
-        "email": user.email,
-        "password": get_password_hash(user.password),
-        "created_at": datetime.utcnow()
-    }
-    
     try:
-        result = users_collection.insert_one(new_user)
-        user_id = str(result.inserted_id)
-        
-        # Create token for immediate login
-        access_token = create_access_token(
-            data={"sub": user.email}
-        )
-        
-        return {
-            "success": True,
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": {
-                "id": user_id,
-                "name": user.name,
-                "email": user.email
-            }
-        }
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor() as cur:
+                    # Check if exists (case-insensitive)
+                    cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (user.email,))
+                    if cur.fetchone():
+                        print(f"Registration failed: Email {user.email} already exists")
+                        raise HTTPException(status_code=400, detail="Email already registered")
+                    
+                    # Create user
+                    pwd_hash = get_password_hash(user.password)
+                    print(f"Registering new user: {user.name} ({user.email.lower()})")
+                    cur.execute("""
+                        INSERT INTO users (name, email, password_hash) 
+                        VALUES (%s, %s, %s) RETURNING id
+                    """, (user.name, user.email.lower(), pwd_hash))
+                    user_id = cur.fetchone()[0]
+                    conn.commit()
+                    
+                    access_token = create_access_token(data={"sub": user.email.lower()})
+                    return {
+                        "success": True,
+                        "access_token": access_token,
+                        "token_type": "bearer",
+                        "user": {"id": user_id, "name": user.name, "email": user.email, "db": "postgresql"}
+                    }
+            finally:
+                pg_pool.putconn(conn)
+
+        raise HTTPException(status_code=500, detail="PostgreSQL not available for registration")
+    except HTTPException: raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @app.post("/api/auth/login")
 async def login(user: UserLogin):
-    db_user = users_collection.find_one({"email": user.email})
-    
-    if not db_user or not verify_password(user.password, db_user["password"]):
+    try:
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    print(f"Login attempt for: {user.email}")
+                    cur.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (user.email,))
+                    db_user = cur.fetchone()
+                    
+                    if not db_user:
+                        print(f"Login failed: User {user.email} not found in database")
+                        raise HTTPException(status_code=401, detail="Incorrect email or password")
+                    
+                    if not verify_password(user.password, db_user['password_hash']):
+                        print(f"Login failed: Invalid password for {user.email}")
+                        raise HTTPException(status_code=401, detail="Incorrect email or password")
+                    
+                    print(f"Login successful for: {user.email}")
+                    access_token = create_access_token(data={"sub": db_user['email']})
+                    db_user['id'] = db_user.pop('id') 
+                    if 'password_hash' in db_user: del db_user['password_hash']
+                    db_user['db'] = "postgresql"
+                    # Ensure role is present
+                    if 'role' not in db_user: db_user['role'] = 'user'
+                    return { "success": True, "access_token": access_token, "token_type": "bearer", "user": db_user }
+            finally:
+                pg_pool.putconn(conn)
+
         raise HTTPException(status_code=401, detail="Incorrect email or password")
-    
-    # Create token
-    access_token = create_access_token(
-        data={"sub": user.email}
-    )
-    
-    return {
-        "success": True,
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": str(db_user["_id"]),
-            "name": db_user.get("name", "User"),
-            "email": db_user["email"]
-        }
-    }
+    except HTTPException: raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
 @app.get("/api/auth/me")
 async def get_me(request: Request):
@@ -241,24 +270,279 @@ async def get_me(request: Request):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
-        if email is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+        if email is None: raise HTTPException(status_code=401, detail="Invalid token")
         
-        db_user = users_collection.find_one({"email": email})
-        if db_user is None:
-            raise HTTPException(status_code=401, detail="User not found")
-        
-        return {
-            "success": True,
-            "user": {
-                "id": str(db_user["_id"]),
-                "name": db_user.get("name", "User"),
-                "email": db_user["email"]
-            }
-        }
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
+                    db_user = cur.fetchone()
+                    if db_user:
+                        if 'password_hash' in db_user: del db_user['password_hash']
+                        if 'role' not in db_user: db_user['role'] = 'user'
+                        db_user['db'] = "postgresql"
+                        return { "success": True, "user": db_user }
+            finally:
+                pg_pool.putconn(conn)
+
+        raise HTTPException(status_code=401, detail="User not found in PostgreSQL")
     except JWTError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
+@app.patch("/api/auth/me")
+async def update_profile(request: Request, profile: UserProfileUpdate):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing auth token")
+    
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Get update data
+        update_data = {k: v for k, v in profile.dict().items() if v is not None}
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No data provided for update")
+        
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    # Build dynamic update query for PostgreSQL
+                    set_clauses = []
+                    values = []
+                    for k, v in update_data.items():
+                        # Map Pydantic fields to PostgreSQL column names
+                        pg_col_name = k.lower() # Simple lowercase mapping for now
+                        if k == "medicalConditions": pg_col_name = "medical_conditions"
+                        if k == "dietPreference": pg_col_name = "diet_preference"
+                        if k == "cuisinePreference": pg_col_name = "cuisine_preference"
+                        if k == "onboardingComplete": pg_col_name = "onboarding_complete"
+                        if k == "profileImage": pg_col_name = "profile_image"
+
+                        if isinstance(v, list): # For array types like medicalConditions, allergies
+                            set_clauses.append(f"{pg_col_name} = %s::jsonb")
+                            values.append(json.dumps(v))
+                        else:
+                            set_clauses.append(f"{pg_col_name} = %s")
+                            values.append(v)
+                    
+                    if not set_clauses:
+                        raise HTTPException(status_code=400, detail="No valid data provided for update")
+
+                    query = f"UPDATE users SET {', '.join(set_clauses)} WHERE email = %s RETURNING *"
+                    values.append(email)
+                    
+                    cur.execute(query, tuple(values))
+                    updated_user = cur.fetchone()
+                    conn.commit()
+
+                    if not updated_user:
+                        raise HTTPException(status_code=404, detail="User not found")
+                    
+                    if 'password_hash' in updated_user: del updated_user['password_hash']
+                    updated_user['db'] = "postgresql"
+                    return {
+                        "success": True,
+                        "message": "Profile updated successfully",
+                        "user": updated_user
+                    }
+            finally:
+                pg_pool.putconn(conn)
+
+        raise HTTPException(status_code=404, detail="User data not found in PostgreSQL")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+
+
+# --- USER DATA SYNC ENDPOINTS ---
+@app.get("/api/user/data")
+async def get_user_data(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing auth token")
+    
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+                    user_row = cur.fetchone()
+                    if user_row:
+                        user_id = user_row['id']
+                        # Fetch medications
+                        cur.execute("SELECT * FROM user_medications WHERE user_id = %s", (user_id,))
+                        meds = cur.fetchall()
+                        # Fetch meals
+                        cur.execute("SELECT * FROM meal_logs WHERE user_id = %s", (user_id,))
+                        meals = cur.fetchall()
+                        # Fetch reminders
+                        cur.execute("SELECT settings FROM user_reminders WHERE user_id = %s", (user_id,))
+                        reminders_row = cur.fetchone()
+                        reminders = reminders_row['settings'] if reminders_row else {"enabled": False, "medications": {}}
+                        
+                        return { "success": True, "medications": meds, "meals": meals, "reminders": reminders, "db": "postgresql" }
+            finally:
+                pg_pool.putconn(conn)
+
+        raise HTTPException(status_code=404, detail="User not found in PostgreSQL")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/user/sync")
+async def sync_user_data(request: Request, data: UserDataSync):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing auth token")
+    
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+            
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
+                    user_row = cur.fetchone()
+                    if not user_row:
+                        raise HTTPException(status_code=401, detail="User not found")
+                    
+                    user_id = user_row[0]
+                    
+                    # Sync medications - simpler to overwrite for now or use JSONB
+                    # For now, let's use the user_reminders table as a catch-all for complex settings
+                    # but proper tables for meds and meals
+                    
+                    # Note: Deep sync is complex, so I'll use a JSONB field for now to ensure 1:1 match with frontend
+                    # in a dedicated table 'user_data_json' if needed, or just use the existing ones.
+                    
+                    # Update Reminders
+                    cur.execute("""
+                        INSERT INTO user_reminders (user_id, enabled, settings)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (user_id) DO UPDATE SET enabled = EXCLUDED.enabled, settings = EXCLUDED.settings
+                    """, (user_id, data.reminders.get('enabled', False), json.dumps(data.reminders)))
+                    
+                    # For medications and meals, we'll clear existing and insert new for simplicity
+                    # In a real app, you'd want more granular updates or use JSONB columns in the users table
+                    # for these if they are small and frequently updated.
+                    
+                    # Clear existing medications and insert new ones
+                    cur.execute("DELETE FROM user_medications WHERE user_id = %s", (user_id,))
+                    for med in data.medications:
+                        cur.execute("""
+                            INSERT INTO user_medications (user_id, medication_name, dosage, frequency, start_date, end_date, notes)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (user_id, med.get('medication_name'), med.get('dosage'), med.get('frequency'),
+                              med.get('start_date'), med.get('end_date'), med.get('notes')))
+
+                    # Clear existing meals and insert new ones
+                    cur.execute("DELETE FROM meal_logs WHERE user_id = %s", (user_id,))
+                    for meal in data.meals:
+                        cur.execute("""
+                            INSERT INTO meal_logs (user_id, meal_name, meal_time, items, notes)
+                            VALUES (%s, %s, %s, %s::jsonb, %s)
+                        """, (user_id, meal.get('meal_name'), meal.get('meal_time'), json.dumps(meal.get('items', [])), meal.get('notes')))
+                    
+                    conn.commit()
+                    return { "success": True, "message": "Data synced to PostgreSQL" }
+            finally:
+                pg_pool.putconn(conn)
+
+        raise HTTPException(status_code=500, detail="PostgreSQL sync failed")
+        
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- ADMIN ENDPOINTS ---
+async def verify_admin(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing auth token")
+    
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        
+        # Check PG first
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("SELECT role FROM users WHERE email = %s", (email,))
+                    user = cur.fetchone()
+                    if user and user.get('role') == 'admin':
+                        return email
+            finally:
+                pg_pool.putconn(conn)
+        
+        # Check Mongo
+        user = users_collection.find_one({"email": email})
+        if user and user.get('role') == 'admin':
+            return email
+            
+        raise HTTPException(status_code=403, detail="Admin access required")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@app.get("/api/admin/stats")
+async def get_admin_stats(request: Request):
+    await verify_admin(request)
+    stats = {}
+    if pg_pool:
+        conn = pg_pool.getconn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM users")
+                stats['total_users'] = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM user_medications")
+                stats['total_medications_logged'] = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM meal_logs")
+                stats['total_meals_logged'] = cur.fetchone()[0]
+        finally:
+            pg_pool.putconn(conn)
+    
+    # MongoDB stats
+    stats['mongodb_users'] = users_collection.count_documents({})
+    stats['last_sync'] = datetime.utcnow()
+    
+    return { "success": True, "stats": stats }
+
+@app.get("/api/admin/users")
+async def get_all_users(request: Request):
+    await verify_admin(request)
+    users = []
+    if pg_pool:
+        conn = pg_pool.getconn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT id, name, email, role, created_at, onboarding_complete FROM users ORDER BY created_at DESC")
+                users = cur.fetchall()
+        finally:
+            pg_pool.putconn(conn)
+    
+    return { "success": True, "users": users }
 
 
 # 2. Search Foods
@@ -268,19 +552,38 @@ def search_foods(
     limit: int = Query(10, description="Limit results")
 ):
     """
-    Search foods collection by "Food" field (case-insensitive, partial match)
+    Search foods table by "food_name" or "name_hindi" (case-insensitive, partial match)
     """
     try:
-        query = {"Food": {"$regex": q, "$options": "i"}}
-        cursor = foods_collection.find(query).limit(limit)
-        results = [serialize_doc(doc) for doc in cursor]
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    q_pg = f"%{q}%"
+                    cur.execute("""
+                        SELECT id, food_name, food_group, 
+                               ROUND(CAST(calories AS numeric), 2) as calories,
+                               ROUND(CAST(protein AS numeric), 2) as protein,
+                               ROUND(CAST(carbs AS numeric), 2) as carbs,
+                               ROUND(CAST(fat AS numeric), 2) as fat,
+                               ROUND(CAST(fiber AS numeric), 2) as fiber,
+                               name_hindi
+                        FROM foods 
+                        WHERE food_name ILIKE %s OR name_hindi ILIKE %s 
+                        LIMIT %s
+                    """, (q_pg, q_pg, limit))
+                    results = cur.fetchall()
+                    return {
+                        "success": True,
+                        "query": q,
+                        "results": results,
+                        "count": len(results),
+                        "db": "postgresql"
+                    }
+            finally:
+                pg_pool.putconn(conn)
         
-        return {
-            "success": True,
-            "query": q,
-            "results": results,
-            "count": len(results)
-        }
+        raise HTTPException(status_code=404, detail="Food results not found in PostgreSQL")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
@@ -292,19 +595,31 @@ def search_drugs(
     limit: int = Query(10, description="Limit results")
 ):
     """
-    Search drugs collection by "Medicine Name" field (case-insensitive, partial match)
+    Search drugs table by "medicine_name" (case-insensitive, partial match)
     """
     try:
-        query = {"Medicine Name": {"$regex": q, "$options": "i"}}
-        cursor = drugs_collection.find(query).limit(limit)
-        results = [serialize_doc(doc) for doc in cursor]
-        
-        return {
-            "success": True,
-            "query": q,
-            "results": results,
-            "count": len(results)
-        }
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    q_pg = f"%{q}%"
+                    cur.execute("""
+                        SELECT * FROM medications 
+                        WHERE medicine_name ILIKE %s 
+                        LIMIT %s
+                    """, (q_pg, limit))
+                    results = cur.fetchall()
+                    return {
+                        "success": True,
+                        "query": q,
+                        "results": results,
+                        "count": len(results),
+                        "db": "postgresql"
+                    }
+            finally:
+                pg_pool.putconn(conn)
+
+        raise HTTPException(status_code=404, detail="Drug results not found in PostgreSQL")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
@@ -317,81 +632,54 @@ def check_interactions(
 ):
     """
     Medical-grade interaction checker with fuzzy matching
-    Handles partial names, generic/brand names, and food categories
     """
     try:
-        # Normalize inputs
-        food_lower = food.lower().strip()
-        drug_lower = drug.lower().strip()
-        
-        # Build comprehensive query with multiple matching strategies
-        query = {
-            "$or": [
-                # Exact match (case-insensitive)
-                {
-                    "$and": [
-                        {"food_name_lower": food_lower},
-                        {"drug_name_lower": drug_lower}
-                    ]
-                },
-                # Partial match on both
-                {
-                    "$and": [
-                        {"food_name": {"$regex": food, "$options": "i"}},
-                        {"drug_name": {"$regex": drug, "$options": "i"}}
-                    ]
-                },
-                # Match food keywords (e.g., "leafy greens" matches "spinach")
-                {
-                    "$and": [
-                        {"food_keywords": {"$in": food_lower.split()}},
-                        {"drug_name": {"$regex": drug, "$options": "i"}}
-                    ]
-                },
-                # Match drug keywords (e.g., "blood thinner" matches "warfarin")
-                {
-                    "$and": [
-                        {"food_name": {"$regex": food, "$options": "i"}},
-                        {"drug_keywords": {"$in": drug_lower.split()}}
-                    ]
-                }
-            ]
-        }
-        
-        cursor = interactions_collection.find(query)
-        results = [serialize_doc(doc) for doc in cursor]
-        
-        # Sort by severity (High > Medium > Low)
-        severity_order = {"High": 0, "Medium": 1, "Low": 2}
-        results.sort(key=lambda x: severity_order.get(x.get("severity", "Low"), 3))
-        
-        # Count by severity
-        severity_counts = {
-            "high": sum(1 for item in results if item.get("severity") == "High"),
-            "medium": sum(1 for item in results if item.get("severity") == "Medium"),
-            "low": sum(1 for item in results if item.get("severity") == "Low")
-        }
-        
-        # Determine overall risk level
-        risk_level = "safe"
-        if severity_counts["high"] > 0:
-            risk_level = "danger"
-        elif severity_counts["medium"] > 0:
-            risk_level = "warning"
-        elif severity_counts["low"] > 0:
-            risk_level = "caution"
-        
-        return {
-            "success": True,
-            "food": food,
-            "drug": drug,
-            "has_interaction": len(results) > 0,
-            "risk_level": risk_level,
-            "interactions": results,
-            "count": len(results),
-            "severity_breakdown": severity_counts,
-            "medical_note": "Always consult your healthcare provider before making dietary changes while on medication."
-        }
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    f_pg = f"%{food}%"
+                    d_pg = f"%{drug}%"
+                    cur.execute("""
+                        SELECT * FROM food_drug_interactions 
+                        WHERE (food_name ILIKE %s AND drug_name ILIKE %s)
+                        OR (food_name ILIKE %s AND drug_name ILIKE %s)
+                        ORDER BY 
+                            CASE severity 
+                                WHEN 'High' THEN 0 
+                                WHEN 'Medium' THEN 1 
+                                WHEN 'Low' THEN 2 
+                                ELSE 3 
+                            END
+                    """, (f_pg, d_pg, food, drug))
+                    results = cur.fetchall()
+                    
+                    severity_counts = {
+                        "high": sum(1 for item in results if item.get("severity") == "High"),
+                        "medium": sum(1 for item in results if item.get("severity") == "Medium"),
+                        "low": sum(1 for item in results if item.get("severity") == "Low")
+                    }
+                    
+                    risk_level = "safe"
+                    if severity_counts["high"] > 0: risk_level = "danger"
+                    elif severity_counts["medium"] > 0: risk_level = "warning"
+                    elif severity_counts["low"] > 0: risk_level = "caution"
+                    
+                    return {
+                        "success": True,
+                        "food": food,
+                        "drug": drug,
+                        "has_interaction": len(results) > 0,
+                        "risk_level": risk_level,
+                        "interactions": results,
+                        "count": len(results),
+                        "severity_breakdown": severity_counts,
+                        "db": "postgresql"
+                    }
+            finally:
+                pg_pool.putconn(conn)
+
+        raise HTTPException(status_code=404, detail="Interaction results not found in PostgreSQL")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Interaction check failed: {str(e)}")
 
@@ -402,20 +690,28 @@ def get_drug_interactions(drug_name: str):
     Get all known interactions for a specific drug
     """
     try:
-        query = {"drug_name": {"$regex": drug_name, "$options": "i"}}
-        cursor = interactions_collection.find(query)
-        results = [serialize_doc(doc) for doc in cursor]
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("SELECT * FROM food_drug_interactions WHERE drug_name ILIKE %s", (f"%{drug_name}%",))
+                    results = cur.fetchall()
+                    
+                    # Sort by severity
+                    severity_order = {"High": 0, "Medium": 1, "Low": 2}
+                    results.sort(key=lambda x: severity_order.get(x.get("severity", "Low"), 3))
+                    
+                    return {
+                        "success": True,
+                        "drug": drug_name,
+                        "interactions": results,
+                        "count": len(results),
+                        "db": "postgresql"
+                    }
+            finally:
+                pg_pool.putconn(conn)
         
-        # Sort by severity
-        severity_order = {"High": 0, "Medium": 1, "Low": 2}
-        results.sort(key=lambda x: severity_order.get(x.get("severity", "Low"), 3))
-        
-        return {
-            "success": True,
-            "drug": drug_name,
-            "interactions": results,
-            "count": len(results)
-        }
+        raise HTTPException(status_code=500, detail="PostgreSQL not available")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch interactions: {str(e)}")
 
@@ -446,56 +742,38 @@ def batch_check_interactions(request: Dict[str, Any]):
         risky_foods = set()
         food_risk_map = {}
         
-        # Check each food against each medication
-        for food in foods:
-            food_interactions = []
-            highest_severity = "Low"
-            
-            for medication in medications:
-                # Use the same comprehensive query as the main endpoint
-                food_lower = food.lower().strip()
-                drug_lower = medication.lower().strip()
-                
-                query = {
-                    "$or": [
-                        {
-                            "$and": [
-                                {"food_name_lower": food_lower},
-                                {"drug_name_lower": drug_lower}
-                            ]
-                        },
-                        {
-                            "$and": [
-                                {"food_name": {"$regex": food, "$options": "i"}},
-                                {"drug_name": {"$regex": medication, "$options": "i"}}
-                            ]
-                        },
-                        {
-                            "$and": [
-                                {"food_keywords": {"$in": food_lower.split()}},
-                                {"drug_name": {"$regex": medication, "$options": "i"}}
-                            ]
-                        }
-                    ]
-                }
-                
-                cursor = interactions_collection.find(query)
-                interactions = [serialize_doc(doc) for doc in cursor]
-                
-                for interaction in interactions:
-                    food_interactions.append(interaction)
-                    severity = interaction.get("severity", "Low")
-                    
-                    # Track highest severity for this food
-                    if severity == "High":
-                        highest_severity = "High"
-                    elif severity == "Medium" and highest_severity != "High":
-                        highest_severity = "Medium"
-            
-            if food_interactions:
-                risky_foods.add(food)
-                food_risk_map[food] = highest_severity
-                all_interactions.extend(food_interactions)
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    for food in foods:
+                        food_interactions = []
+                        highest_severity = "Low"
+                        
+                        for medication in medications:
+                            f_pg = f"%{food}%"
+                            m_pg = f"%{medication}%"
+                            cur.execute("""
+                                SELECT * FROM food_drug_interactions 
+                                WHERE (food_name ILIKE %s AND drug_name ILIKE %s)
+                                OR (food_name ILIKE %s AND drug_name ILIKE %s)
+                            """, (f_pg, m_pg, food, medication))
+                            interactions = cur.fetchall()
+                            
+                            for interaction in interactions:
+                                food_interactions.append(interaction)
+                                severity = interaction.get("severity", "Low")
+                                if severity == "High": highest_severity = "High"
+                                elif severity == "Medium" and highest_severity != "High": highest_severity = "Medium"
+                        
+                        if food_interactions:
+                            risky_foods.add(food)
+                            food_risk_map[food] = highest_severity
+                            all_interactions.extend(food_interactions)
+            finally:
+                pg_pool.putconn(conn)
+        else:
+            raise HTTPException(status_code=500, detail="PostgreSQL not available")
         
         # Categorize foods by risk
         safe_foods = [f for f in foods if f not in risky_foods]
@@ -538,18 +816,79 @@ def autocomplete(
     Prefix search for autocomplete (starts with query)
     """
     try:
-        if type.lower() == "drug":
-            collection = drugs_collection
-            field = "Medicine Name"
-            # Substring search (more like Google/Medicines search)
-            query = {field: {"$regex": q, "$options": "i"}}
-            cursor = collection.find(query, {field: 1, "_id": 0}).limit(limit)
-            
-            suggestions = []
-            for doc in cursor:
-                val = doc.get(field)
-                if val and val not in suggestions:
-                    suggestions.append(val)
+        # --- PostgreSQL Implementation ---
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    q_prefix = f"{q}%"
+                    q_any = f"%{q}%"
+                    
+                    if type.lower() == "drug":
+                        # 1. Search in PostgreSQL Medications
+                        cur.execute("""
+                            (SELECT medicine_name as name, category, uses as subtext, medicine_name as raw, 1 as priority
+                             FROM medications WHERE medicine_name ILIKE %s LIMIT %s)
+                            UNION
+                            (SELECT medicine_name as name, category, uses as subtext, medicine_name as raw, 2 as priority
+                             FROM medications WHERE medicine_name ILIKE %s LIMIT %s)
+                            ORDER BY priority ASC
+                            LIMIT %s
+                        """, (q_prefix, limit, q_any, limit, limit))
+                        pg_results = cur.fetchall()
+                        
+                        suggestions = []
+                        for r in pg_results:
+                            name = r['name'].title()
+                            subtext = r['subtext'] or ("Prescription Medication" if r['category'] == 'Prescription' else (r['category'] or "Health Medication"))
+                            if not any(s['name'] == name for s in suggestions):
+                                suggestions.append({
+                                    "name": name,
+                                    "raw": r['raw'],
+                                    "category": "Medication",
+                                    "subtext": subtext
+                                })
+                        
+                        return { "success": True, "suggestions": suggestions[:limit], "db": "postgresql" }
+                    
+                    else:
+                        lang_col = { "hi": "name_hindi", "ta": "name_tamil", "ml": "name_malayalam" }.get(lang.lower(), "food_name")
+                        
+                        # Multi-language search with priority to prefix
+                        cur.execute(f"""
+                            (SELECT food_name as name, food_group as category, 
+                                   concat(ROUND(CAST(calories AS numeric), 2), ' kcal | ', ROUND(CAST(protein AS numeric), 2), 'g protein') as subtext,
+                                   food_name as raw, 1 as priority
+                             FROM foods 
+                             WHERE food_name ILIKE %s OR name_hindi ILIKE %s OR name_tamil ILIKE %s OR name_malayalam ILIKE %s
+                             LIMIT %s)
+                            UNION
+                            (SELECT food_name as name, food_group as category, 
+                                   concat(ROUND(CAST(calories AS numeric), 2), ' kcal | ', ROUND(CAST(protein AS numeric), 2), 'g protein') as subtext,
+                                   food_name as raw, 2 as priority
+                             FROM foods 
+                             WHERE food_name ILIKE %s OR name_hindi ILIKE %s OR name_tamil ILIKE %s OR name_malayalam ILIKE %s
+                             LIMIT %s)
+                            ORDER BY priority ASC
+                            LIMIT %s
+                        """, (q_prefix, q_prefix, q_prefix, q_prefix, limit, 
+                              q_any, q_any, q_any, q_any, limit, limit))
+                        
+                        results = cur.fetchall()
+                        suggestions = []
+                        for r in results:
+                            # Naturalize and deduplicate
+                            if not any(s['name'] == r['name'] for s in suggestions):
+                                suggestions.append({
+                                    "name": r['name'],
+                                    "subtext": r['subtext'],
+                                    "category": r['category'] or "Food",
+                                    "raw": r['raw']
+                                })
+                        
+                        return { "success": True, "suggestions": suggestions[:limit], "db": "postgresql" }
+            finally:
+                pg_pool.putconn(conn)
         else:
             collection = foods_collection
             lang_map = {
@@ -560,30 +899,126 @@ def autocomplete(
             }
             target_field = lang_map.get(lang.lower(), "Food")
             
-            # Cross-language search: search in English AND the target language
-            # Using substring match (no ^) for "Google-like" behavior
-            query = {
+            # Escape query for safe regex
+            q_esc = re.escape(q)
+            
+            # Cross-language search
+            query_obj = {
                 "$or": [
-                    {"Food": {"$regex": q, "$options": "i"}},
-                    {"name_hindi": {"$regex": q, "$options": "i"}},
-                    {"name_tamil": {"$regex": q, "$options": "i"}},
-                    {"name_malayalam": {"$regex": q, "$options": "i"}}
+                    {"Food": {"$regex": q_esc, "$options": "i"}},
+                    {"name_hindi": {"$regex": q_esc, "$options": "i"}},
+                    {"name_tamil": {"$regex": q_esc, "$options": "i"}},
+                    {"name_malayalam": {"$regex": q_esc, "$options": "i"}}
                 ]
             }
             
-            cursor = collection.find(query).limit(limit)
+            # Fetch more candidates to allow meaningful deduplication
+            cursor = list(collection.find(query_obj).limit(limit * 15))
+            
+            # --- Fallback for common foods (PRIORITIZING Kerala, TN, Karnataka) ---
+            common_foods = [
+                # Kerala Staples
+                {"name": "Puttu (Rice & Coconut)", "cal": 230, "prot": 5, "cat": "Kerala Breakfast"},
+                {"name": "Appam (Fermented Rice Pancake)", "cal": 120, "prot": 2, "cat": "Kerala Breakfast"},
+                {"name": "Avial (Mixed Vegetable Kerala)", "cal": 150, "prot": 3, "cat": "Kerala Side"},
+                {"name": "Matta Rice (Kerala Red Rice)", "cal": 130, "prot": 3, "cat": "Grains"},
+                {"name": "Fish Curry (Kerala Style)", "cal": 180, "prot": 22, "cat": "Seafood"},
+                {"name": "Kappa (Tapioca Cooked)", "cal": 160, "prot": 1.5, "cat": "Kerala Staple"},
+                {"name": "Beef Fry (Nadan)", "cal": 290, "prot": 24, "cat": "Kerala Side"},
+                # Tamil Nadu Staples
+                {"name": "Idli (2 pieces)", "cal": 120, "prot": 4, "cat": "TN Breakfast"},
+                {"name": "Dosa (Plain)", "cal": 160, "prot": 3, "cat": "TN Breakfast"},
+                {"name": "Sambhar (Vegetable)", "cal": 80, "prot": 5, "cat": "TN Side"},
+                {"name": "Pongal (Ven Pongal)", "cal": 210, "prot": 6, "cat": "TN Breakfast"},
+                {"name": "Medu Vada (1 piece)", "cal": 95, "prot": 2.5, "cat": "TN Snack"},
+                {"name": "Curd Rice (Thayir Sadam)", "cal": 190, "prot": 5, "cat": "TN Staple"},
+                # Karnataka Staples
+                {"name": "Ragi Mudde (Millet Ball)", "cal": 210, "prot": 7, "cat": "Karnataka Staple"},
+                {"name": "Bisi Bele Bath", "cal": 280, "prot": 9, "cat": "Karnataka Staple"},
+                {"name": "Akki Roti", "cal": 180, "prot": 4, "cat": "Karnataka Breakfast"},
+                {"name": "Neer Dosa", "cal": 100, "prot": 2, "cat": "Karnataka Breakfast"},
+                # Essential Indian
+                {"name": "Dal (Cooked)", "cal": 116, "prot": 9, "cat": "Indian Staple"},
+                {"name": "Chapati/Roti", "cal": 264, "prot": 9, "cat": "Indian Staple"},
+                {"name": "Chicken Curry", "cal": 220, "prot": 25, "cat": "Main Course"},
+                {"name": "Paneer Butter Masala", "cal": 320, "prot": 12, "cat": "Main Course"}
+            ]
             
             suggestions = []
+            q_clean = q.lower().strip()
+            
+            # 1. ALWAYS inject matching regional staples FIRST (High UX)
+            for f in common_foods:
+                if q_clean in f["name"].lower():
+                    suggestions.append({
+                        "name": f["name"],
+                        "subtext": f"{f['cal']} kcal | {f['prot']}g protein per 100g",
+                        "category": f["cat"],
+                        "raw": f["name"]
+                    })
+                if len(suggestions) >= limit: break
+
+            # Naturalization Engine
+            abbrev_map = {
+                "CRL": "Cereal", "JUC": "Juice", "DSSRT": "Dessert", "FRT": "Fruit",
+                "W/": "with", "W/O": "without", "HP": "High Protein", "BEV": "Beverage",
+                "STR": "Strained", "DRY": "Dry", "INST": "Instant", "BF": "Baby Food",
+                "APPL": "Apple", "ORNG": "Orange", "CND": "Canned", "BTLD": "Bottled",
+                "CNG": "Canned", "PUDD": "Pudding", "HIPROT": "High Protein", "LOFAT": "Low Fat"
+            }
+            
+            categories = {"BABYFOOD", "BEVERAGES", "CEREALS", "FATS", "FRUITS", "GRAINS", "MEATS", "VEGETABLES", "DAIRY", "SNACKS", "SOUPS", "SPICES", "SWEETS", "CRL", "DSSRT", "JUC", "FRT", "BEV", "GERBER", "BEECH-NUT"}
+
             for doc in cursor:
-                # Primary: Localized name. Fallback: English name.
-                localized = doc.get(target_field)
                 english = doc.get("Food")
+                localized = doc.get(target_field)
+                raw_name = localized if localized and localized.strip() else english
+                if not raw_name: continue
+
+                # Deep Clean and Naturalize
+                parts = [p.strip() for p in raw_name.split(',')]
+                clean_parts = []
+                primary_labels = []
                 
-                # If target field is empty, fallback to English
-                display_name = localized if localized and localized.strip() else english
+                for p in parts:
+                    p_up = p.upper()
+                    mapped = abbrev_map.get(p_up, p.title())
+                    if p_up in categories:
+                        primary_labels.append(mapped)
+                    else:
+                        clean_parts.append(mapped)
+
+                # Find the 'Hook' (part that contains the query)
+                main_title = ""
+                other_details = []
+                for p in clean_parts:
+                    if q.lower() in p.lower() and not main_title:
+                        main_title = p
+                    else:
+                        other_details.append(p)
                 
-                if display_name and display_name not in suggestions:
-                    suggestions.append(display_name)
+                if not main_title and clean_parts:
+                    main_title = clean_parts[0]
+                    other_details = clean_parts[1:]
+                
+                # Consolidate labels (e.g., "Apple Babyfood")
+                for label in primary_labels:
+                    if label.lower() not in main_title.lower():
+                        main_title = f"{main_title} {label}"
+                
+                final_name = main_title.strip()
+                final_subtext = ", ".join(other_details).lower()
+
+                # Deduplicate by final name to prevent "duplicate entries for same food" issue
+                if not any(s['name'].lower() == final_name.lower() for s in suggestions):
+                    suggestions.append({
+                        "name": final_name,
+                        "subtext": final_subtext,
+                        "category": doc.get("food_group_nin") or "Food",
+                        "raw": raw_name
+                    })
+                    if len(suggestions) >= limit:
+                        break
         
         return {
             "success": True,
@@ -591,16 +1026,13 @@ def autocomplete(
             "type": type,
             "lang": lang,
             "suggestions": suggestions,
-            "count": len(suggestions)
+            "count": len(suggestions),
+            "db": "mongodb"
         }
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {
-            "success": False,
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }
+        raise HTTPException(status_code=500, detail=f"Autocomplete failed: {str(e)}")
 
 
 # 6. Get Food Details
@@ -610,7 +1042,31 @@ def get_food_details(food_name: str):
     Get specific food by searching across all name fields
     """
     try:
-        # Search across multiple name fields to handle localized names
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("""
+                        SELECT id, food_name, food_group, 
+                               ROUND(CAST(calories AS numeric), 2) as calories,
+                               ROUND(CAST(protein AS numeric), 2) as protein,
+                               ROUND(CAST(carbs AS numeric), 2) as carbs,
+                               ROUND(CAST(fat AS numeric), 2) as fat,
+                               ROUND(CAST(fiber AS numeric), 2) as fiber,
+                               name_hindi, name_tamil, name_malayalam
+                        FROM foods 
+                        WHERE food_name ILIKE %s OR name_hindi ILIKE %s OR name_tamil ILIKE %s OR name_malayalam ILIKE %s
+                        LIMIT 1
+                    """, (food_name, food_name, food_name, food_name))
+                    doc = cur.fetchone()
+                    if doc:
+                        # Rename for frontend compatibility
+                        doc['Food'] = doc['food_name']
+                        return { "success": True, "food": doc, "db": "postgresql" }
+            finally:
+                pg_pool.putconn(conn)
+
+        # Fallback to MongoDB
         query = {
             "$or": [
                 {"Food": {"$regex": f"^{food_name}$", "$options": "i"}},
@@ -620,14 +1076,9 @@ def get_food_details(food_name: str):
             ]
         }
         doc = foods_collection.find_one(query)
-        
         if not doc:
             raise HTTPException(status_code=404, detail="Food not found")
-            
-        return {
-            "success": True,
-            "food": serialize_doc(doc)
-        }
+        return { "success": True, "food": serialize_doc(doc), "db": "mongodb" }
     except HTTPException:
         raise
     except Exception as e:
@@ -641,17 +1092,20 @@ def get_drug_details(medicine_name: str):
     Get specific drug by exact name match
     """
     try:
-        # Exact match logic
-        query = {"Medicine Name": {"$regex": f"^{medicine_name}$", "$options": "i"}}
-        doc = drugs_collection.find_one(query)
-        
-        if not doc:
-            raise HTTPException(status_code=404, detail="Drug not found")
-            
-        return {
-            "success": True,
-            "drug": serialize_doc(doc)
-        }
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("SELECT * FROM medications WHERE medicine_name ILIKE %s LIMIT 1", (medicine_name,))
+                    doc = cur.fetchone()
+                    if doc:
+                        # Rename for frontend compatibility
+                        if 'medicine_name' in doc: doc['Medicine Name'] = doc['medicine_name']
+                        return { "success": True, "drug": doc, "db": "postgresql" }
+            finally:
+                pg_pool.putconn(conn)
+
+        raise HTTPException(status_code=404, detail="Drug profile not found in PostgreSQL")
     except HTTPException:
         raise
     except Exception as e:
@@ -702,24 +1156,21 @@ def search_drug_side_effects(
     Values returned include medical condition, rating, and safety warnings
     """
     try:
-        # Search by drug name, generic name, or brand names
-        query = {
-            "$or": [
-                {"drug_name": {"$regex": q, "$options": "i"}},
-                {"generic_name": {"$regex": q, "$options": "i"}},
-                {"brand_names": {"$regex": q, "$options": "i"}}
-            ]
-        }
-        
-        cursor = drug_side_effects_collection.find(query).limit(limit)
-        results = [serialize_doc(doc) for doc in cursor]
-        
-        return {
-            "success": True,
-            "query": q,
-            "results": results,
-            "count": len(results)
-        }
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    q_pg = f"%{q}%"
+                    cur.execute("""
+                        SELECT * FROM medications 
+                        WHERE medicine_name ILIKE %s OR composition ILIKE %s 
+                        LIMIT %s
+                    """, (q_pg, q_pg, limit))
+                    results = cur.fetchall()
+                    return { "success": True, "query": q, "results": results, "count": len(results), "db": "postgresql" }
+            finally:
+                pg_pool.putconn(conn)
+        raise HTTPException(status_code=500, detail="PostgreSQL not available")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Side effects search failed: {str(e)}")
 
@@ -730,29 +1181,18 @@ def get_drug_side_effects_details(drug_name: str):
     Get full safety profile for a specific drug
     """
     try:
-        # Try exact match first
-        query = {"drug_name_lower": drug_name.lower().strip()}
-        doc = drug_side_effects_collection.find_one(query)
-        
-        # If not found, try generic name
-        if not doc:
-            query = {"generic_name_lower": drug_name.lower().strip()}
-            doc = drug_side_effects_collection.find_one(query)
-        
-        # If still not found, try partial match on name
-        if not doc:
-             query = {"drug_name": {"$regex": f"^{drug_name}", "$options": "i"}}
-             doc = drug_side_effects_collection.find_one(query)
-            
-        if not doc:
-            raise HTTPException(status_code=404, detail="Drug safety profile not found")
-            
-        return {
-            "success": True,
-            "drug": serialize_doc(doc)
-        }
-    except HTTPException:
-        raise
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("SELECT * FROM medications WHERE medicine_name ILIKE %s", (medicine_name,))
+                    doc = cur.fetchone()
+                    if doc: return { "success": True, "drug": doc }
+                    raise HTTPException(status_code=404, detail="Drug safety profile not found")
+            finally:
+                pg_pool.putconn(conn)
+        raise HTTPException(status_code=500, detail="PostgreSQL not available")
+    except HTTPException: raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving drug details: {str(e)}")
 
@@ -763,20 +1203,21 @@ def get_stats():
     Return count of foods, drugs, interactions and total records
     """
     try:
-        foods_count = foods_collection.count_documents({})
-        drugs_count = drugs_collection.count_documents({})
-        interactions_count = interactions_collection.count_documents({})
-        
-        return {
-            "success": True,
-            "database": DATABASE_NAME,
-            "collections": {
-                "foods": foods_count,
-                "drugs": drugs_count,
-                "interactions": interactions_count
-            },
-            "total_records": foods_count + drugs_count + interactions_count
-        }
+        counts = {}
+        if pg_pool:
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT COUNT(*) FROM foods")
+                    counts['foods'] = cur.fetchone()[0]
+                    cur.execute("SELECT COUNT(*) FROM medications")
+                    counts['drugs'] = cur.fetchone()[0]
+                    cur.execute("SELECT COUNT(*) FROM food_drug_interactions")
+                    counts['interactions'] = cur.fetchone()[0]
+                    return { "success": True, "database": "PostgreSQL", "collections": counts, "total_records": sum(counts.values()) }
+            finally:
+                pg_pool.putconn(conn)
+        raise HTTPException(status_code=500, detail="PostgreSQL not available")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Stats failed: {str(e)}")
 
@@ -788,18 +1229,13 @@ def health_check():
     Check if MongoDB is connected and return healthy/unhealthy status
     """
     try:
-        client.server_info()
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "message": "MediNutri API is fully operational"
-        }
+        if pg_pool:
+            conn = pg_pool.getconn()
+            pg_pool.putconn(conn)
+            return { "status": "healthy", "database": "PostgreSQL connected", "message": "MediNutri API is fully operational" }
+        return { "status": "unhealthy", "database": "PostgreSQL disconnected", "error": "Pool not initialized" }
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "database": "disconnected",
-            "error": str(e)
-        }
+        return { "status": "unhealthy", "database": "disconnected", "error": str(e) }
 
 # 11. AI Assistant Endpoint (Rule-Based Expert System)
 async def generate_ai_response(messages: List[Dict[str, str]], user_context: Dict[str, Any]):
@@ -838,25 +1274,29 @@ async def generate_ai_response(messages: List[Dict[str, str]], user_context: Dic
             
             # Simple keyword check against interaction database
             # In a real scenario, we would use the specific drug IDs
+            # PostgreSQL Logic for AI checks
             found_hits = 0
-            for med in meds:
-                # Find interactions for this drug
-                # We use a broad search since we don't have exact ID matching in this simple logic
-                cursor = interactions_collection.find({"drug_name_lower": {"$regex": med["name"].lower()}}).limit(3)
-                drug_interactions = list(cursor)
-                
-                if drug_interactions:
-                    response_buffer.append(f"⚠️ **Potential alerts for {med['name']}**:\n")
-                    for i in drug_interactions:
-                        severity_icon = "🔴" if i.get('severity') == 'High' else "🟡"
-                        response_buffer.append(f"{severity_icon} **{i['food_name']}**: {i.get('description', '')}\n")
-                    found_hits += 1
-                    found_issue = True
+            if pg_pool:
+                conn = pg_pool.getconn()
+                try:
+                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                        for med in meds:
+                            cur.execute("SELECT * FROM food_drug_interactions WHERE drug_name ILIKE %s LIMIT 3", (f"%{med['name']}%",))
+                            drug_interactions = cur.fetchall()
+                            if drug_interactions:
+                                response_buffer.append(f"⚠️ **Potential alerts for {med['name']}**:\n")
+                                for i in drug_interactions:
+                                    severity_icon = "🔴" if i.get('severity') == 'High' else "🟡"
+                                    response_buffer.append(f"{severity_icon} **{i['food_name']}**: {i.get('interaction_text', '')}\n")
+                                found_hits += 1
+                                found_issue = True
+                finally:
+                    pg_pool.putconn(conn)
             
             if found_hits == 0:
-                response_buffer.append("✅ I didn't find specific food interactions for your current medication list in my immediate database. However, always follow your doctor's advice.")
+                response_buffer.append("✅ I didn't find specific food interactions for your current medication list in my database.")
             else:
-                response_buffer.append("\n**Recommendation:** Please review the [Check Safety](/interactions) page for detailed analysis.")
+                response_buffer.append("\n**Recommendation:** Review the [Check Safety](/interactions) page for details.")
 
     elif intent == "side_effects":
         # Extract drug name from message
@@ -869,46 +1309,40 @@ async def generate_ai_response(messages: List[Dict[str, str]], user_context: Dic
                 target_drug = med["name"]
                 break
         
-        # If not active, look for any word that looks like a drug in our DB
         if not target_drug:
             words = last_message.split()
-            for w in words:
-                clean_w = re.sub(r'[^\w]', '', w)
-                if len(clean_w) > 3:
-                     # Quick check
-                     if drug_side_effects_collection.find_one({"drug_name_lower": clean_w.lower()}):
-                         target_drug = clean_w
-                         break
+            if pg_pool:
+                conn = pg_pool.getconn()
+                try:
+                    with conn.cursor() as cur:
+                        for w in words:
+                            clean_w = re.sub(r'[^\w]', '', w)
+                            if len(clean_w) > 3:
+                                cur.execute("SELECT id FROM medications WHERE medicine_name ILIKE %s LIMIT 1", (f"%{clean_w}%",))
+                                if cur.fetchone():
+                                    target_drug = clean_w
+                                    break
+                finally:
+                    pg_pool.putconn(conn)
         
         if target_drug:
-            # Fetch details
-            drug_doc = drug_side_effects_collection.find_one({
-                "$or": [
-                    {"drug_name_lower": target_drug.lower()},
-                    {"generic_name_lower": target_drug.lower()}
-                ]
-            })
+            if pg_pool:
+                conn = pg_pool.getconn()
+                try:
+                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                        cur.execute("SELECT * FROM medications WHERE medicine_name ILIKE %s LIMIT 1", (f"%{target_drug}%",))
+                        drug_doc = cur.fetchone()
+                finally:
+                    pg_pool.putconn(conn)
             
             if drug_doc:
-                response_buffer.append(f"### Safety Profile for **{drug_doc.get('drug_name')}**\n\n")
-                
-                severe = drug_doc.get('side_effects_severe', [])
-                if severe:
-                    response_buffer.append("🚫 **Serious Side Effects** (Call doctor):\n")
-                    for s in severe[:3]:
-                        response_buffer.append(f"- {s}\n")
-                    response_buffer.append("\n")
-                
-                common = drug_doc.get('side_effects_common', [])
-                if common:
-                    response_buffer.append("ℹ️ **Common Side Effects**:\n")
-                    for s in common[:3]:
-                        response_buffer.append(f"- {s}\n")
-                
-                response_buffer.append(f"\n**Used for:** {drug_doc.get('medical_condition', 'Various conditions')}")
-                
-                if drug_doc.get('pregnancy_category'):
-                     response_buffer.append(f"\n**Pregnancy Category:** {drug_doc.get('pregnancy_category')}")
+                response_buffer.append(f"### Safety Profile for **{drug_doc.get('medicine_name')}**\n\n")
+                if drug_doc.get('side_effects'):
+                    response_buffer.append(f"ℹ️ **Side Effects**:\n {drug_doc.get('side_effects')}\n")
+                if drug_doc.get('uses'):
+                    response_buffer.append(f"\n**Commonly used for:** {drug_doc.get('uses')}")
+                if drug_doc.get('composition'):
+                    response_buffer.append(f"\n**Composition:** {drug_doc.get('composition')}")
             else:
                 response_buffer.append(f"I found '{target_drug}' in your message, but I don't have detailed safety data for it yet.")
         else:
@@ -1101,6 +1535,6 @@ async def chat_endpoint(request: Request):
 if __name__ == "__main__":
     import uvicorn
     print("Starting MediNutri API Server...")
-    print(f"Database: {DATABASE_NAME}")
-    print(f"MongoDB URL: {MONGODB_URL}")
+    print("Database: PostgreSQL (active)")
+    print("MongoDB: Disabled (Architecture simplified)")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

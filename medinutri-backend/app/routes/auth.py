@@ -11,8 +11,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=UserResponse)
 async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
-    # Check if user exists
-    result = await db.execute(select(User).where(User.email == user_in.email))
+    from sqlalchemy import func
+    # Check if user exists (case-insensitive)
+    result = await db.execute(select(User).where(func.lower(User.email) == func.lower(user_in.email)))
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -55,7 +56,8 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(User).where(User.email == form_data.username))
+    from sqlalchemy import func
+    result = await db.execute(select(User).where(func.lower(User.email) == func.lower(form_data.username)))
     user = result.scalar_one_or_none()
     
     if not user or not verify_password(form_data.password, user.hashed_password):

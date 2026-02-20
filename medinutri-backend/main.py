@@ -46,17 +46,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# PostgreSQL Connection
-POSTGRES_URL = os.getenv("DATABASE_URL")
+# PostgreSQL Connection Helper
 pg_pool = None
-try:
-    if POSTGRES_URL:
-        pg_pool = SimpleConnectionPool(1, 20, POSTGRES_URL)
-        print("Connected to PostgreSQL successfully")
-    else:
-        print("DATABASE_URL not found in .env")
-except Exception as e:
-    print(f"PostgreSQL connection failed: {e}")
+
+def get_db_pool():
+    global pg_pool
+    if pg_pool is None:
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            print("CRITICAL: DATABASE_URL not found in environment")
+            return None
+        
+        # In production/deployment environments (like Vercel), we often need sslmode=require
+        # for many cloud PG providers (Neon, Supabase, Vercel Postgres)
+        if "sslmode=" not in db_url and not os.getenv("IS_LOCAL_DEV"):
+            separator = "&" if "?" in db_url else "?"
+            db_url = f"{db_url}{separator}sslmode=require"
+            
+        try:
+            pg_pool = SimpleConnectionPool(1, 10, db_url)
+            print("Connected to PostgreSQL successfully")
+        except Exception as e:
+            print(f"PostgreSQL connection failed: {e}")
+            return None
+    return pg_pool
+
+# Initial attempt
+get_db_pool()
 
 # Auth Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "medinutri-super-secret-key-2024")
@@ -190,73 +206,79 @@ async def register(user: UserRegister):
         raise HTTPException(status_code=400, detail="Password must contain at least one number")
 
     try:
-        if pg_pool:
-            conn = pg_pool.getconn()
-            try:
-                with conn.cursor() as cur:
-                    # Check if exists (case-insensitive)
-                    cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (user.email,))
-                    if cur.fetchone():
-                        print(f"Registration failed: Email {user.email} already exists")
-                        raise HTTPException(status_code=400, detail="Email already registered")
-                    
-                    # Create user
-                    pwd_hash = get_password_hash(user.password)
-                    print(f"Registering new user: {user.name} ({user.email.lower()})")
-                    cur.execute("""
-                        INSERT INTO users (name, email, password_hash) 
-                        VALUES (%s, %s, %s) RETURNING id
-                    """, (user.name, user.email.lower(), pwd_hash))
-                    user_id = cur.fetchone()[0]
-                    conn.commit()
-                    
-                    access_token = create_access_token(data={"sub": user.email.lower()})
-                    return {
-                        "success": True,
-                        "access_token": access_token,
-                        "token_type": "bearer",
-                        "user": {"id": user_id, "name": user.name, "email": user.email, "db": "postgresql"}
-                    }
-            finally:
-                pg_pool.putconn(conn)
-
-        raise HTTPException(status_code=500, detail="PostgreSQL not available for registration")
-    except HTTPException: raise
+        pool = get_db_pool()
+        if not pool:
+            raise HTTPException(status_code=500, detail="Database connection could not be established. Check DATABASE_URL.")
+        
+        conn = pool.getconn()
+        try:
+            with conn.cursor() as cur:
+                # Check if exists (case-insensitive)
+                cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (user.email,))
+                if cur.fetchone():
+                    print(f"Registration failed: Email {user.email} already exists")
+                    raise HTTPException(status_code=400, detail="Email already registered")
+                
+                # Create user
+                pwd_hash = get_password_hash(user.password)
+                print(f"Registering new user: {user.name} ({user.email.lower()})")
+                cur.execute("""
+                    INSERT INTO users (name, email, password_hash) 
+                    VALUES (%s, %s, %s) RETURNING id
+                """, (user.name, user.email.lower(), pwd_hash))
+                user_id = cur.fetchone()[0]
+                conn.commit()
+                
+                access_token = create_access_token(data={"sub": user.email.lower()})
+                return {
+                    "success": True,
+                    "access_token": access_token,
+                    "token_type": "bearer",
+                    "user": {"id": user_id, "name": user.name, "email": user.email, "db": "postgresql"}
+                }
+        finally:
+            if 'pool' in locals() and pool and 'conn' in locals():
+                pool.putconn(conn)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @app.post("/api/auth/login")
 async def login(user: UserLogin):
     try:
-        if pg_pool:
-            conn = pg_pool.getconn()
-            try:
-                with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                    print(f"Login attempt for: {user.email}")
-                    cur.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (user.email,))
-                    db_user = cur.fetchone()
-                    
-                    if not db_user:
-                        print(f"Login failed: User {user.email} not found in database")
-                        raise HTTPException(status_code=401, detail="Incorrect email or password")
-                    
-                    if not verify_password(user.password, db_user['password_hash']):
-                        print(f"Login failed: Invalid password for {user.email}")
-                        raise HTTPException(status_code=401, detail="Incorrect email or password")
-                    
-                    print(f"Login successful for: {user.email}")
-                    access_token = create_access_token(data={"sub": db_user['email']})
-                    db_user['id'] = db_user.pop('id') 
-                    if 'password_hash' in db_user: del db_user['password_hash']
-                    db_user['db'] = "postgresql"
-                    # Ensure role is present
-                    if 'role' not in db_user: db_user['role'] = 'user'
-                    return { "success": True, "access_token": access_token, "token_type": "bearer", "user": db_user }
-            finally:
-                pg_pool.putconn(conn)
-
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
-    except HTTPException: raise
+        pool = get_db_pool()
+        if not pool:
+            raise HTTPException(status_code=500, detail="Database connection could not be established.")
+            
+        conn = pool.getconn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                print(f"Login attempt for: {user.email}")
+                cur.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (user.email,))
+                db_user = cur.fetchone()
+                
+                if not db_user:
+                    print(f"Login failed: User {user.email} not found in database")
+                    raise HTTPException(status_code=401, detail="Incorrect email or password")
+                
+                if not verify_password(user.password, db_user['password_hash']):
+                    print(f"Login failed: Invalid password for {user.email}")
+                    raise HTTPException(status_code=401, detail="Incorrect email or password")
+                
+                print(f"Login successful for: {user.email}")
+                access_token = create_access_token(data={"sub": db_user['email']})
+                db_user['id'] = db_user.pop('id') 
+                if 'password_hash' in db_user: del db_user['password_hash']
+                db_user['db'] = "postgresql"
+                # Ensure role is present
+                if 'role' not in db_user: db_user['role'] = 'user'
+                return { "success": True, "access_token": access_token, "token_type": "bearer", "user": db_user }
+        finally:
+            if 'pool' in locals() and pool and 'conn' in locals():
+                pool.putconn(conn)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
@@ -272,19 +294,23 @@ async def get_me(request: Request):
         email: str = payload.get("sub")
         if email is None: raise HTTPException(status_code=401, detail="Invalid token")
         
-        if pg_pool:
-            conn = pg_pool.getconn()
-            try:
-                with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                    cur.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
-                    db_user = cur.fetchone()
-                    if db_user:
-                        if 'password_hash' in db_user: del db_user['password_hash']
-                        if 'role' not in db_user: db_user['role'] = 'user'
-                        db_user['db'] = "postgresql"
-                        return { "success": True, "user": db_user }
-            finally:
-                pg_pool.putconn(conn)
+        pool = get_db_pool()
+        if not pool:
+            raise HTTPException(status_code=500, detail="Database connection setup failed")
+        
+        conn = pool.getconn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
+                db_user = cur.fetchone()
+                if db_user:
+                    if 'password_hash' in db_user: del db_user['password_hash']
+                    if 'role' not in db_user: db_user['role'] = 'user'
+                    db_user['db'] = "postgresql"
+                    return { "success": True, "user": db_user }
+        finally:
+            if 'pool' in locals() and pool and 'conn' in locals():
+                pool.putconn(conn)
 
         raise HTTPException(status_code=401, detail="User not found in PostgreSQL")
     except JWTError:
@@ -555,35 +581,37 @@ def search_foods(
     Search foods table by "food_name" or "name_hindi" (case-insensitive, partial match)
     """
     try:
-        if pg_pool:
-            conn = pg_pool.getconn()
-            try:
-                with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                    q_pg = f"%{q}%"
-                    cur.execute("""
-                        SELECT id, food_name, food_group, 
-                               ROUND(CAST(calories AS numeric), 2) as calories,
-                               ROUND(CAST(protein AS numeric), 2) as protein,
-                               ROUND(CAST(carbs AS numeric), 2) as carbs,
-                               ROUND(CAST(fat AS numeric), 2) as fat,
-                               ROUND(CAST(fiber AS numeric), 2) as fiber,
-                               name_hindi
-                        FROM foods 
-                        WHERE food_name ILIKE %s OR name_hindi ILIKE %s 
-                        LIMIT %s
-                    """, (q_pg, q_pg, limit))
-                    results = cur.fetchall()
-                    return {
-                        "success": True,
-                        "query": q,
-                        "results": results,
-                        "count": len(results),
-                        "db": "postgresql"
-                    }
-            finally:
-                pg_pool.putconn(conn)
+        pool = get_db_pool()
+        if not pool:
+            raise HTTPException(status_code=500, detail="Database connection setup failed")
         
-        raise HTTPException(status_code=404, detail="Food results not found in PostgreSQL")
+        conn = pool.getconn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                q_pg = f"%{q}%"
+                cur.execute("""
+                    SELECT id, food_name, food_group, 
+                           ROUND(CAST(calories AS numeric), 2) as calories,
+                           ROUND(CAST(protein AS numeric), 2) as protein,
+                           ROUND(CAST(carbs AS numeric), 2) as carbs,
+                           ROUND(CAST(fat AS numeric), 2) as fat,
+                           ROUND(CAST(fiber AS numeric), 2) as fiber,
+                           name_hindi
+                    FROM foods 
+                    WHERE food_name ILIKE %s OR name_hindi ILIKE %s 
+                    LIMIT %s
+                """, (q_pg, q_pg, limit))
+                results = cur.fetchall()
+                return {
+                    "success": True,
+                    "query": q,
+                    "results": results,
+                    "count": len(results),
+                    "db": "postgresql"
+                }
+        finally:
+            if 'pool' in locals() and pool and 'conn' in locals():
+                pool.putconn(conn)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
@@ -598,28 +626,30 @@ def search_drugs(
     Search drugs table by "medicine_name" (case-insensitive, partial match)
     """
     try:
-        if pg_pool:
-            conn = pg_pool.getconn()
-            try:
-                with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                    q_pg = f"%{q}%"
-                    cur.execute("""
-                        SELECT * FROM medications 
-                        WHERE medicine_name ILIKE %s 
-                        LIMIT %s
-                    """, (q_pg, limit))
-                    results = cur.fetchall()
-                    return {
-                        "success": True,
-                        "query": q,
-                        "results": results,
-                        "count": len(results),
-                        "db": "postgresql"
-                    }
-            finally:
-                pg_pool.putconn(conn)
-
-        raise HTTPException(status_code=404, detail="Drug results not found in PostgreSQL")
+        pool = get_db_pool()
+        if not pool:
+            raise HTTPException(status_code=500, detail="Database connection setup failed")
+            
+        conn = pool.getconn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                q_pg = f"%{q}%"
+                cur.execute("""
+                    SELECT * FROM medications 
+                    WHERE medicine_name ILIKE %s 
+                    LIMIT %s
+                """, (q_pg, limit))
+                results = cur.fetchall()
+                return {
+                    "success": True,
+                    "query": q,
+                    "results": results,
+                    "count": len(results),
+                    "db": "postgresql"
+                }
+        finally:
+            if 'pool' in locals() and pool and 'conn' in locals():
+                pool.putconn(conn)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 

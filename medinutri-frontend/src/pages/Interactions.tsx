@@ -17,6 +17,8 @@ import {
   Pill
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { API_URL } from "@/config";
+
 
 export default function Interactions() {
   const { userMedications } = useApp();
@@ -36,7 +38,8 @@ export default function Interactions() {
 
       try {
         const promises = medicationNames.map(name =>
-          fetch(`http://localhost:8000/api/interactions/drug/${encodeURIComponent(name)}`)
+          fetch(`${API_URL}/api/interactions/drug/${encodeURIComponent(name)}`)
+
             .then(res => res.json())
         );
 
@@ -99,7 +102,8 @@ export default function Interactions() {
     try {
       // Check this food against ALL user medications
       const promises = medicationNames.map(drug =>
-        fetch(`http://localhost:8000/api/search/interactions?food=${encodeURIComponent(quickCheckFood)}&drug=${encodeURIComponent(drug)}`)
+        fetch(`${API_URL}/api/search/interactions?food=${encodeURIComponent(quickCheckFood)}&drug=${encodeURIComponent(drug)}`)
+
           .then(res => res.json())
       );
 
@@ -169,7 +173,7 @@ export default function Interactions() {
       </div>
 
       {/* Quick Check Card */}
-      <Card className="gradient-bg text-white">
+      <Card className="gradient-bg text-white overflow-visible">
         <CardContent className="p-6 md:p-8">
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-2xl font-bold text-center">
@@ -206,10 +210,10 @@ export default function Interactions() {
       {/* Quick Check Result */}
       {quickCheckResult && (
         <Card className={`animate-scale-in border-2 ${quickCheckResult.result.interactions.some((i) => i.severity === "danger" || i.severity === "high")
-            ? "border-red-500 bg-red-50 dark:bg-red-950/20"
-            : quickCheckResult.result.interactions.some((i) => i.severity === "caution" || i.severity === "moderate")
-              ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
-              : "border-green-500 bg-green-50 dark:bg-green-950/20"
+          ? "border-red-500 bg-red-50 dark:bg-red-950/20"
+          : quickCheckResult.result.interactions.some((i) => i.severity === "caution" || i.severity === "moderate")
+            ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
+            : "border-green-500 bg-green-50 dark:bg-green-950/20"
           }`}>
           <CardContent className="p-6">
             <div className="flex items-start gap-4">

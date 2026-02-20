@@ -9,14 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Activity, User, Heart, ShieldAlert, Languages, Utensils, ArrowRight } from "lucide-react";
+import { Activity, User, Heart, ShieldAlert, Languages, Utensils, ArrowRight, Check } from "lucide-react";
 
 const MEDICAL_CONDITIONS = [
-    "Diabetes", "Hypertension (BP)", "Thyroid Issues", "Heart Disease", "Kidney Issues", "Cholesterol"
+    "None", "Diabetes", "Hypertension (BP)", "Thyroid Issues", "Heart Disease", "Kidney Issues", "Cholesterol"
 ];
 
 const ALLERGIES = [
-    "Peanuts", "Dairy", "Gluten", "Shellfish", "Soy", "Eggs"
+    "None", "Peanuts", "Dairy", "Gluten", "Shellfish", "Soy", "Eggs"
 ];
 
 const CompleteProfile = () => {
@@ -35,7 +35,7 @@ const CompleteProfile = () => {
         cuisinePreference: user?.cuisinePreference || "Indian",
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         // Basic validation
@@ -44,7 +44,7 @@ const CompleteProfile = () => {
             return;
         }
 
-        updateUser({
+        await updateUser({
             ...formData,
             gender: formData.gender as any,
             age: Number(formData.age),
@@ -58,21 +58,39 @@ const CompleteProfile = () => {
     };
 
     const toggleCondition = (condition: string) => {
-        setFormData(prev => ({
-            ...prev,
-            medicalConditions: prev.medicalConditions.includes(condition)
+        setFormData(prev => {
+            const isNone = condition === "None";
+            if (isNone) {
+                return {
+                    ...prev,
+                    medicalConditions: prev.medicalConditions.includes("None") ? [] : ["None"]
+                };
+            }
+
+            const newConditions = prev.medicalConditions.includes(condition)
                 ? prev.medicalConditions.filter(c => c !== condition)
-                : [...prev.medicalConditions, condition]
-        }));
+                : [...prev.medicalConditions.filter(c => c !== "None"), condition];
+
+            return { ...prev, medicalConditions: newConditions };
+        });
     };
 
     const toggleAllergy = (allergy: string) => {
-        setFormData(prev => ({
-            ...prev,
-            allergies: prev.allergies.includes(allergy)
+        setFormData(prev => {
+            const isNone = allergy === "None";
+            if (isNone) {
+                return {
+                    ...prev,
+                    allergies: prev.allergies.includes("None") ? [] : ["None"]
+                };
+            }
+
+            const newAllergies = prev.allergies.includes(allergy)
                 ? prev.allergies.filter(a => a !== allergy)
-                : [...prev.allergies, allergy]
-        }));
+                : [...prev.allergies.filter(a => a !== "None"), allergy];
+
+            return { ...prev, allergies: newAllergies };
+        });
     };
 
     return (
@@ -208,7 +226,7 @@ const CompleteProfile = () => {
                                             <span className="font-bold">{condition}</span>
                                             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.medicalConditions.includes(condition) ? "bg-primary border-primary" : "border-white/20"
                                                 }`}>
-                                                {formData.medicalConditions.includes(condition) && <ArrowRight className="h-3 w-3 text-white" />}
+                                                {formData.medicalConditions.includes(condition) && <Check className="h-3 w-3 text-white" />}
                                             </div>
                                         </div>
                                     ))}
@@ -230,14 +248,21 @@ const CompleteProfile = () => {
                                     {ALLERGIES.map(allergy => (
                                         <div
                                             key={allergy}
-                                            onClick={() => toggleAllergy(allergy)}
-                                            className={`flex items-center gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${formData.allergies.includes(allergy)
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                toggleAllergy(allergy);
+                                            }}
+                                            className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${formData.allergies.includes(allergy)
                                                 ? "bg-orange-500/20 border-orange-500 text-white"
                                                 : "bg-white/5 border-white/5 text-slate-400"
                                                 }`}
                                         >
-                                            <Checkbox checked={formData.allergies.includes(allergy)} className="border-white/20" />
                                             <span className="font-bold">{allergy}</span>
+                                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData.allergies.includes(allergy) ? "bg-orange-500 border-orange-500" : "border-white/20"
+                                                }`}>
+                                                {formData.allergies.includes(allergy) && <Check className="h-3 w-3 text-white" />}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

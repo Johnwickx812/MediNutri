@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { API_URL } from "@/config";
+
 
 const Feedback = () => {
     const { t } = useLanguage();
@@ -38,7 +40,8 @@ const Feedback = () => {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch("http://localhost:8000/api/feedback", {
+            const response = await fetch(`${API_URL}/api/feedback`, {
+
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

@@ -117,13 +117,11 @@ const Profile = () => {
             <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[150px] translate-y-1/2 opacity-30" />
 
             <div className="relative container py-12 space-y-12 max-w-6xl animate-in fade-in duration-800">
-                {/* Refined Header - Updated with Report Buttons */}
-                <div className="relative overflow-hidden rounded-[3.5rem] bg-slate-900/90 dark:bg-slate-950/40 backdrop-blur-2xl border border-white/10 shadow-2xl">
-                    <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-primary/10 rounded-full blur-[100px]" />
-
-                    <div className="relative flex flex-col md:flex-row gap-8 items-start md:items-center p-10">
-                        {/* Avatar */}
-                        <div className="relative shrink-0">
+                {/* Refined Header */}
+                <div className="relative overflow-visible">
+                    <div className="flex flex-col md:flex-row gap-12 items-center md:items-start">
+                        {/* Circular Avatar with Green Border */}
+                        <div className="relative shrink-0 group">
                             <input
                                 type="file"
                                 ref={fileInputRef}
@@ -131,94 +129,117 @@ const Profile = () => {
                                 accept="image/*"
                                 onChange={handleImageUpload}
                             />
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="relative h-32 w-32 rounded-[3.5rem] overflow-hidden bg-gradient-to-br from-emerald-500/80 to-primary/80 flex items-center justify-center text-white shadow-2xl transition-all border border-white/10"
-                            >
-                                {user?.profileImage ? (
-                                    <img src={user.profileImage} alt="Profile" className="h-full w-full object-cover" />
-                                ) : (
-                                    <User className="h-16 w-16" />
-                                )}
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                    <Camera className="h-8 w-8 text-white" />
-                                </div>
-                            </button>
+                            <div className="relative h-48 w-48 rounded-full p-1 bg-gradient-to-br from-primary/50 to-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.2)] group-hover:scale-105 transition-transform duration-500">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="relative h-full w-full rounded-full overflow-hidden bg-slate-900 border-2 border-slate-950 flex items-center justify-center text-white"
+                                >
+                                    {user?.profileImage ? (
+                                        <img src={user.profileImage} alt="Profile" className="h-full w-full object-cover" />
+                                    ) : (
+                                        <User className="h-20 w-20 text-slate-700" />
+                                    )}
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Camera className="h-10 w-10 text-white" />
+                                    </div>
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="space-y-6 flex-1 min-w-0">
-                            <div>
-                                <h1 className="text-6xl font-black tracking-tighter text-white drop-shadow-sm truncate">
-                                    {user?.name}
-                                </h1>
-                                <div className="flex flex-wrap gap-4 mt-4">
-                                    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-md px-5 py-2.5 rounded-[2rem] border border-white/10 text-slate-300">
-                                        <Mail className="h-5 w-5 text-primary" />
-                                        <span className="text-base font-bold">{user?.email}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-md px-5 py-2.5 rounded-[2rem] border border-white/10 text-slate-300">
-                                        <Calendar className="h-5 w-5 text-emerald-400" />
-                                        <span className="text-base font-bold">{t.auth.memberSince} Feb 2025</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* New Report Generation Controls */}
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-6 bg-white/5 rounded-[2.5rem] border border-white/5">
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                                        <FileText className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <span className="font-black text-white uppercase tracking-wider text-xs">Generate Health Report</span>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {[
-                                        { label: "1 Week", days: 7 },
-                                        { label: "2 Weeks", days: 14 },
-                                        { label: "3 Weeks", days: 21 },
-                                        { label: "1 Month", days: 30 }
-                                    ].map((opt) => (
-                                        <button
-                                            key={opt.days}
-                                            onClick={() => generateHealthReport(opt.days)}
-                                            className="px-4 py-2 bg-slate-800 hover:bg-primary transition-all rounded-xl text-xs font-bold text-white flex items-center gap-2 border border-white/5 shadow-lg"
-                                        >
-                                            <Download className="h-3 w-3" />
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Old Data Cleanup Prompt (Only if > 60 days) */}
-                            {hasOldData && (
-                                <div className="mt-4 p-6 bg-red-500/10 rounded-[2.5rem] border border-red-500/20 flex flex-col sm:flex-row items-center justify-between gap-6 animate-in slide-in-from-top duration-700">
-                                    <div className="flex items-center gap-4 text-center sm:text-left">
-                                        <div className="h-12 w-12 rounded-2xl bg-red-500/20 flex items-center justify-center shrink-0">
-                                            <Trash2 className="h-6 w-6 text-red-400" />
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-white text-lg leading-tight">Optimization Required</p>
-                                            <p className="text-sm font-bold text-slate-400">Your history exceeds 2 months. Delete old data to keep MediNutri fast?</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <Button
-                                            variant="destructive"
-                                            onClick={() => {
-                                                clearOldData();
-                                                toast.success("Ancient history cleared successfully!");
-                                            }}
-                                            className="rounded-2xl h-14 px-8 font-black gap-2 shadow-xl shadow-red-500/10"
-                                        >
-                                            Yes, Delete Old Data
+                        {/* User Details */}
+                        <div className="space-y-8 flex-1 text-center md:text-left">
+                            <div className="space-y-2">
+                                <div className="flex flex-col md:flex-row md:items-baseline md:gap-6 items-center justify-center md:justify-start">
+                                    <h1 className="text-8xl font-black tracking-tighter text-white lowercase">
+                                        {user?.name?.split(' ')[0]}
+                                    </h1>
+                                    <Link to="/complete-profile">
+                                        <Button variant="outline" size="sm" className="hidden md:flex rounded-full border-white/10 bg-white/5 hover:bg-primary hover:border-primary text-xs font-black uppercase tracking-widest px-6 h-10 gap-2 transition-all">
+                                            Edit Profile
+                                            <ArrowRight className="h-3 w-3" />
                                         </Button>
+                                    </Link>
+                                </div>
+
+                                <div className="flex flex-col md:flex-row flex-wrap gap-4 mt-6 justify-center md:justify-start">
+                                    <div className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md px-8 py-3.5 rounded-full border border-white/10 text-slate-300 shadow-xl">
+                                        <Mail className="h-5 w-5 text-primary" />
+                                        <span className="text-lg font-bold lowercase tracking-tight">{user?.email}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md px-8 py-3.5 rounded-full border border-white/10 text-slate-300 shadow-xl">
+                                        <Calendar className="h-5 w-5 text-primary" />
+                                        <span className="text-lg font-bold">Member since Feb 2025</span>
                                     </div>
                                 </div>
-                            )}
+                            </div>
+
+                            {/* Mobile Edit Button */}
+                            <Link to="/complete-profile" className="block md:hidden">
+                                <Button variant="outline" className="w-full rounded-full border-white/10 bg-white/5 px-8 h-12 text-sm font-black uppercase tracking-widest gap-2">
+                                    Edit Profile
+                                    <ArrowRight className="h-4 w-4" />
+                                </Button>
+                            </Link>
+
+                            {/* Health Report Generation Section */}
+                            <div className="relative group p-8 md:p-10 rounded-[3rem] bg-slate-900/60 backdrop-blur-xl border border-white/5 shadow-3xl max-w-2xl mx-auto md:mx-0">
+                                <div className="flex flex-col sm:flex-row items-center gap-8">
+                                    <div className="shrink-0 flex flex-col items-center">
+                                        <div className="h-16 w-16 rounded-[1.5rem] bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                                            <FileText className="h-8 w-8 text-primary" />
+                                        </div>
+                                        <span className="mt-4 font-black text-white uppercase tracking-widest text-[10px] opacity-70 text-center">Generate Health Report</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 w-full">
+                                        {[
+                                            { label: "1 Week", days: 7 },
+                                            { label: "2 Weeks", days: 14 },
+                                            { label: "3 Weeks", days: 21 },
+                                            { label: "1 Month", days: 30 }
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.days}
+                                                onClick={() => generateHealthReport(opt.days)}
+                                                className="px-6 py-4 bg-slate-800/50 hover:bg-primary transition-all rounded-2xl text-sm font-black text-white flex items-center justify-center gap-3 border border-white/5 shadow-xl group/btn"
+                                            >
+                                                <Download className="h-4 w-4 opacity-50 group-hover/btn:opacity-100 transition-opacity" />
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                {/* Old Data Cleanup Prompt */}
+                {hasOldData && (
+                    <div className="mt-4 p-6 bg-red-500/10 rounded-[2.5rem] border border-red-500/20 flex flex-col sm:flex-row items-center justify-between gap-6 animate-in slide-in-from-top duration-700">
+                        <div className="flex items-center gap-4 text-center sm:text-left">
+                            <div className="h-12 w-12 rounded-2xl bg-red-500/20 flex items-center justify-center shrink-0">
+                                <Trash2 className="h-6 w-6 text-red-400" />
+                            </div>
+                            <div>
+                                <p className="font-black text-white text-lg leading-tight">Optimization Required</p>
+                                <p className="text-sm font-bold text-slate-400">Your history exceeds 2 months. Delete old data to keep MediNutri fast?</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="destructive"
+                                onClick={() => {
+                                    clearOldData();
+                                    toast.success("Ancient history cleared successfully!");
+                                }}
+                                className="rounded-2xl h-14 px-8 font-black gap-2 shadow-xl shadow-red-500/10"
+                            >
+                                Yes, Delete Old Data
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Health Summary & Meals */}
@@ -286,7 +307,6 @@ const Profile = () => {
                             </div>
                         </section>
 
-                        {/* Personal Health Metrics Card */}
                         <section className="mt-12">
                             <div className="flex items-center gap-3 mb-8 px-2">
                                 <div className="h-12 w-12 rounded-[1.5rem] bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
@@ -369,7 +389,6 @@ const Profile = () => {
                             </Card>
                         </section>
 
-                        {/* Recent Meals */}
                         <section>
                             <div className="flex items-center gap-3 mb-8 px-2">
                                 <div className="h-12 w-12 rounded-[1.5rem] bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
@@ -419,7 +438,6 @@ const Profile = () => {
                         </section>
                     </div>
 
-                    {/* Sidebar - Medications */}
                     <div className="lg:col-span-4 space-y-12">
                         <section>
                             <div className="flex items-center gap-3 mb-8 px-2">

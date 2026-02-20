@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { API_URL } from "@/config";
 
 interface User {
     id: string;
@@ -14,6 +15,7 @@ interface User {
     dietPreference?: 'vegetarian' | 'non-vegetarian' | 'vegan' | 'eggetarian';
     cuisinePreference?: string;
     onboardingComplete?: boolean;
+    role?: 'admin' | 'user';
 }
 
 interface AuthContextType {
@@ -30,17 +32,30 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(() => {
-        const saved = localStorage.getItem("userData");
-        return saved ? JSON.parse(saved) : null;
+        try {
+            const saved = localStorage.getItem("userData");
+            return saved ? JSON.parse(saved) : null;
+        } catch (error) {
+            console.error("Failed to parse user data from localStorage", error);
+            localStorage.removeItem("userData");
+            return null;
+        }
     });
-    const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
+
+    const [token, setToken] = useState<string | null>(() => {
+        try {
+            return localStorage.getItem("token");
+        } catch (error) {
+            return null;
+        }
+    });
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const checkAuth = async () => {
             if (token) {
                 try {
-                    const response = await fetch("http://localhost:8000/api/auth/me", {
+                    const response = await fetch(`${API_URL}/api/auth/me`, {
                         headers: {
                             Authorization: `Bearer ${token}`,
                         },
@@ -76,11 +91,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
     };
 
-    const updateUser = (data: Partial<User>) => {
-        if (!user) return;
-        const updatedUser = { ...user, ...data };
-        setUser(updatedUser);
-        localStorage.setItem("userData", JSON.stringify(updatedUser));
+    const updateUser = async (data: Partial<User>) => {
+        if (!user || !token) return;
+
+        try {
+            // Optimistic update
+            const updatedUser = { ...user, ...data };
+            setUser(updatedUser);
+            localStorage.setItem("userData", JSON.stringify(updatedUser));
+
+            // Persist to backend
+            const response = await fetch(`${API_URL}/api/auth/me`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to update profile on server");
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                setUser(result.user);
+                localStorage.setItem("userData", JSON.stringify(result.user));
+            }
+        } catch (error) {
+            console.error("Profile update failed:", error);
+            // Rollback on failure if needed, but for now we just log
+        }
     };
 
     return (

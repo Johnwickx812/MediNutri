@@ -17,6 +17,7 @@ import AIAssistant from "./pages/AIAssistant";
 import Feedback from "./pages/Feedback";
 import Profile from "./pages/Profile";
 import CompleteProfile from "./pages/CompleteProfile";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -62,6 +63,7 @@ const AppRoutes = () => {
           <Route path="/settings" element={<Settings />} />
           <Route path="/ai-assistant" element={<AIAssistant />} />
           <Route path="/feedback" element={<Feedback />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       )}

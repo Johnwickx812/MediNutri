@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { Medication } from "@/data/medications";
 import { Food } from "@/data/foods";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useAuth } from "@/context/AuthContext";
+import { API_URL } from "@/config";
 
 interface MealEntry {
   id: string;
@@ -47,6 +49,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user, token } = useAuth();
   const {
     permission: notificationPermission,
     requestPermission: requestNotificationPermission,
@@ -55,33 +58,106 @@ export function AppProvider({ children }: { children: ReactNode }) {
     cancelAllReminders
   } = useNotifications();
 
-  const [userMedications, setUserMedications] = useState<Medication[]>(() => {
-    const saved = localStorage.getItem("medinutri_medications");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [userMedications, setUserMedications] = useState<Medication[]>([]);
+  const [mealLog, setMealLog] = useState<MealEntry[]>([]);
+  const [reminderSettings, setReminderSettings] = useState<ReminderSettings>({ enabled: false, medications: {} });
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  const [mealLog, setMealLog] = useState<MealEntry[]>(() => {
-    const saved = localStorage.getItem("medinutri_meals");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [reminderSettings, setReminderSettings] = useState<ReminderSettings>(() => {
-    const saved = localStorage.getItem("medinutri_reminders");
-    return saved ? JSON.parse(saved) : { enabled: false, medications: {} };
-  });
-
-  // Persist to localStorage
+  // Load Data on User Change
   useEffect(() => {
-    localStorage.setItem("medinutri_medications", JSON.stringify(userMedications));
-  }, [userMedications]);
+    if (!user || !user.id) {
+      // Clear data on logout
+      setUserMedications([]);
+      setMealLog([]);
+      setReminderSettings({ enabled: false, medications: {} });
+      setIsDataLoaded(false);
+      return;
+    }
 
-  useEffect(() => {
-    localStorage.setItem("medinutri_meals", JSON.stringify(mealLog));
-  }, [mealLog]);
+    const loadData = async () => {
+      try {
+        // 1. Try Local Cache First (User Specific Key)
+        const localPrefix = `medinutri_user_${user.id}`;
+        const cachedMeds = localStorage.getItem(`${localPrefix}_medications`);
+        const cachedMeals = localStorage.getItem(`${localPrefix}_meals`);
+        const cachedReminders = localStorage.getItem(`${localPrefix}_reminders`);
 
+        if (cachedMeds) setUserMedications(JSON.parse(cachedMeds));
+        if (cachedMeals) setMealLog(JSON.parse(cachedMeals));
+        if (cachedReminders) setReminderSettings(JSON.parse(cachedReminders));
+
+        // 2. Fetch from Backend
+        if (token) {
+          const response = await fetch(`${API_URL}/api/user/data`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json();
+
+          if (data.success) {
+            // Merge or overwrite strategy - for now overwrite with server truth
+            if (data.medications) setUserMedications(data.medications);
+            if (data.meals) setMealLog(data.meals);
+            if (data.reminders) setReminderSettings(data.reminders);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load user data:", error);
+      } finally {
+        setIsDataLoaded(true);
+      }
+    };
+
+    loadData();
+  }, [user?.id, token]);
+
+
+  // Sync Data to Backend & LocalStorage
+  const syncData = useCallback(async (
+    meds: Medication[],
+    meals: MealEntry[],
+    reminders: ReminderSettings
+  ) => {
+    if (!user?.id || !isDataLoaded) return;
+
+    // 1. Save to Local Storage (User Specific)
+    const localPrefix = `medinutri_user_${user.id}`;
+    localStorage.setItem(`${localPrefix}_medications`, JSON.stringify(meds));
+    localStorage.setItem(`${localPrefix}_meals`, JSON.stringify(meals));
+    localStorage.setItem(`${localPrefix}_reminders`, JSON.stringify(reminders));
+
+    // 2. Sync to Backend
+    if (token) {
+      try {
+        await fetch(`${API_URL}/api/user/sync`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            medications: meds,
+            meals: meals,
+            reminders: reminders
+          })
+        });
+      } catch (error) {
+        console.error("Failed to sync data to backend:", error);
+      }
+    }
+  }, [user?.id, token, isDataLoaded]);
+
+  // Trigger Sync on changes
   useEffect(() => {
-    localStorage.setItem("medinutri_reminders", JSON.stringify(reminderSettings));
-  }, [reminderSettings]);
+    if (user?.id && isDataLoaded) {
+      const timeoutId = setTimeout(() => {
+        syncData(userMedications, mealLog, reminderSettings);
+      }, 1000); // 1s debounce
+      return () => clearTimeout(timeoutId);
+    }
+  }, [userMedications, mealLog, reminderSettings, user?.id, isDataLoaded, syncData]);
+
+
+  // --- Logic Helpers ---
 
   // Sync Notifications with Medications
   useEffect(() => {
@@ -103,7 +179,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addMedication = (medication: Medication) => {
     const newMed = { ...medication, id: Date.now().toString() };
     setUserMedications((prev) => [...prev, newMed]);
-    // Auto-enable reminder for new medication if reminders are enabled
     if (reminderSettings.enabled) {
       setReminderSettings((prev) => ({
         ...prev,
@@ -114,7 +189,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const removeMedication = (id: string) => {
     setUserMedications((prev) => prev.filter((m) => m.id !== id));
-    // Remove reminder setting
     setReminderSettings((prev) => {
       const { [id]: _, ...rest } = prev.medications;
       return { ...prev, medications: rest };
@@ -163,7 +237,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setRemindersEnabled = (enabled: boolean) => {
     setReminderSettings((prev) => {
-      // When enabling, turn on all medication reminders
       if (enabled) {
         const allMeds: Record<string, boolean> = {};
         userMedications.forEach((med) => {
@@ -177,7 +250,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [hasOldData, setHasOldData] = useState(false);
 
-  // Check for old data (> 60 days) on load and when mealLog changes
   useEffect(() => {
     const sixtyDaysAgo = Date.now() - (60 * 24 * 60 * 60 * 1000);
     const oldExists = mealLog.some(meal => meal.timestamp < sixtyDaysAgo);

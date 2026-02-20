@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import {
   Home,
@@ -22,13 +23,15 @@ import {
   ChevronDown,
   Shield,
   User,
-  MessageSquare
+  MessageSquare,
+  UserCog
 } from "lucide-react";
 
 export function Navbar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -71,6 +74,15 @@ export function Navbar() {
               <span>{t.nav.diet}</span>
             </Button>
           </Link>
+
+          {user?.role === 'admin' && (
+            <Link to="/admin">
+              <Button variant={isActive("/admin") ? "default" : "ghost"} size="sm" className="gap-2 h-10 rounded-full px-4 font-bold bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white border border-indigo-500/20">
+                <UserCog className="h-4 w-4" />
+                <span>Admin</span>
+              </Button>
+            </Link>
+          )}
 
           {/* Safety Dropdown */}
           <DropdownMenu>
@@ -140,6 +152,7 @@ export function Navbar() {
               <div className="flex-1 overflow-y-auto p-6 space-y-2">
                 {[
                   { path: "/", label: t.nav.home, icon: Home },
+                  ...(user?.role === 'admin' ? [{ path: "/admin", label: "Admin Dashboard", icon: UserCog }] : []),
                   { path: "/medications", label: t.nav.medications, icon: Pill },
                   { path: "/diet", label: t.nav.diet, icon: UtensilsCrossed },
                   { path: "/interactions", label: t.nav.checkSafety, icon: AlertTriangle },

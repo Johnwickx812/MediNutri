@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { API_URL } from "@/config";
 import { MedicationCard } from "@/components/cards/MedicationCard";
 import { ReminderManager } from "@/components/notifications/ReminderManager";
 import { useApp } from "@/context/AppContext";
@@ -72,7 +73,7 @@ export default function Medications() {
 
   const handleSelectDrug = async (drugName: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/drug/${encodeURIComponent(drugName)}`);
+      const response = await fetch(`${API_URL}/api/drug/${encodeURIComponent(drugName)}`);
       const data = await response.json();
 
       if (data.success && data.drug) {
@@ -225,71 +226,76 @@ export default function Medications() {
         </Dialog>
       </div>
 
-      {/* Reminder Manager */}
-      <ReminderManager />
-
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* User's Medications */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">
-            {t.medications.yourMedications} ({userMedications.length})
-          </h2>
-
-          {userMedications.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-12 text-center">
-                <Pill className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="font-semibold text-lg mb-2">{t.medications.noMedicationsYet}</h3>
-                <p className="text-muted-foreground mb-4">
-                  {t.medications.noMedicationsDesc}
-                </p>
-                <Button onClick={() => setDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t.medications.addFirstMedication}
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {userMedications.map((med, index) => (
-                <div
-                  key={med.id}
-                  className="animate-fade-up"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <MedicationCard medication={med} onRemove={handleRemove} />
-                </div>
-              ))}
+      {/* Quick Add Section - Moved to top for better accessibility */}
+      <Card className="border-none shadow-xl bg-gradient-to-br from-primary/5 via-background to-primary/5 rounded-[2.5rem] overflow-visible">
+        <CardContent className="p-8 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Pill className="h-5 w-5 text-primary" />
+              {t.medications.quickAddCommon}
+            </h2>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 backdrop-blur-md">
+              <Info className="h-4 w-4" />
+              <span>Official Drug Database</span>
             </div>
-          )}
-        </div>
-
-        {/* Quick Add Section */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">{t.medications.quickAddCommon}</h2>
+          </div>
 
           <div className="relative z-20">
             <Autocomplete
               type="drug"
               placeholder={t.medications.searchMedications}
               onSelect={handleSelectDrug}
-              className="w-full"
+              className="w-full h-14 text-lg rounded-full border-2 border-primary bg-slate-900/90 text-white placeholder:text-slate-400 shadow-none"
             />
           </div>
 
-          <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900">
-            <CardContent className="py-3 px-4 flex items-start gap-2">
-              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-800 dark:text-blue-300">
-                {t.medications.clickToAdd}
+          <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-[1.5rem] border border-primary/20 group hover:bg-primary/10 transition-colors">
+            <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+              <Info className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
+              {t.medications.clickToAdd}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reminder Manager */}
+      <ReminderManager />
+
+      {/* User's Medications List */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-black tracking-tighter text-slate-800 dark:text-white uppercase px-2">
+          {t.medications.yourMedications} ({userMedications.length})
+        </h2>
+
+        {userMedications.length === 0 ? (
+          <Card className="border-2 border-dashed border-white/10 bg-white/5 rounded-[4rem]">
+            <CardContent className="py-24 text-center">
+              <Pill className="h-16 w-16 text-slate-600 mx-auto mb-6" />
+              <h3 className="font-black text-2xl mb-2 text-slate-400">{t.medications.noMedicationsYet}</h3>
+              <p className="text-slate-500 font-bold mb-8 max-w-sm mx-auto">
+                {t.medications.noMedicationsDesc}
               </p>
+              <Button onClick={() => setDialogOpen(true)} size="lg" className="rounded-2xl h-14 px-8 font-black shadow-xl shadow-primary/20">
+                <Plus className="mr-2 h-5 w-5" />
+                {t.medications.addFirstMedication}
+              </Button>
             </CardContent>
           </Card>
-
-          <p className="text-sm text-muted-foreground">
-            Search above to find medicines from the official database.
-          </p>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {userMedications.map((med, index) => (
+              <div
+                key={med.id}
+                className="animate-fade-up"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <MedicationCard medication={med} onRemove={handleRemove} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

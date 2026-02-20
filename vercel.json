@@ -1,0 +1,30 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "medinutri-frontend/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist"
+            }
+        },
+        {
+            "src": "medinutri-backend/main.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "/medinutri-backend/main.py"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/medinutri-frontend/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/medinutri-frontend/index.html"
+        }
+    ]
+}

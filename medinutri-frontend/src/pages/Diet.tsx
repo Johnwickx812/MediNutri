@@ -10,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select"; import { API_URL } from "@/config";
 import { FoodCard } from "@/components/cards/FoodCard";
 import { StatCard } from "@/components/ui/stat-card";
 import { Autocomplete } from "@/components/ui/Autocomplete";
@@ -85,7 +85,7 @@ export default function Diet() {
 
   const handleSelectFood = async (foodName: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/food/${encodeURIComponent(foodName)}`);
+      const response = await fetch(`${API_URL}/api/food/${encodeURIComponent(foodName)}`);
       const data = await response.json();
 
       if (data.success && data.food) {
@@ -141,17 +141,67 @@ export default function Diet() {
         </p>
       </div>
 
+
+
+      {/* Global Food Search Bar - Prime Focus at Top */}
+      <Card className="border-none shadow-xl bg-gradient-to-br from-primary/5 via-background to-primary/5 rounded-[2.5rem] overflow-visible">
+        <CardContent className="p-8 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Search className="h-5 w-5 text-primary" />
+              {t.diet.searchFoods}
+            </h2>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 backdrop-blur-md">
+              <Info className="h-4 w-4" />
+              <span>8,000+ Indian & International Foods</span>
+            </div>
+          </div>
+
+          <div className="relative z-20">
+            <Autocomplete
+              type="food"
+              placeholder="Type food name (e.g., Spinach, Rice, Dal...)"
+              onSelect={handleSelectFood}
+              className="w-full h-14 text-lg rounded-full border-2 border-primary bg-slate-900/90 text-white placeholder:text-slate-400 shadow-none"
+            />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Currently adding to:</p>
+            <div className="flex gap-2">
+              {(Object.keys(mealLabels) as MealType[]).map((type) => {
+                const Icon = mealIcons[type];
+                const isActive = selectedMealType === type;
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedMealType(type)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${isActive
+                      ? "bg-primary text-white shadow-lg shadow-primary/20 scale-105"
+                      : "bg-white/10 text-slate-500 hover:bg-white/20"
+                      }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {mealLabels[type]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title={t.diet.todaysCalories}
-          value={Math.round(getTodaysCalories())}
+          value={getTodaysCalories().toFixed(1)}
           subtitle={t.diet.kcalConsumed}
           icon={Flame}
         />
         <StatCard
           title={t.diet.protein}
-          value={`${Math.round(getTodaysProtein())}g`}
+          value={`${getTodaysProtein().toFixed(1)}g`}
           subtitle={t.diet.fromTodaysMeals}
           icon={Beef}
         />
@@ -189,49 +239,14 @@ export default function Diet() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Food Search & Browse */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-          <Card className="shadow-xl border-2 border-primary/10 overflow-visible">
-            <CardHeader className="bg-primary/5 pb-8">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/20 rounded-xl">
-                  <Search className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-2xl">{t.diet.searchFoods}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1 font-medium">
-                    Search from our database of 8,000+ Indian & International foods.
-                  </p>
-                </div>
-              </div>
+          <Card className="shadow-xl border border-primary/10 rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="bg-primary/5 pb-4">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <UtensilsCrossed className="h-5 w-5 text-primary" />
+                Browse Foods
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-8 space-y-10">
-              {/* Global Search Bar - Prime Focus */}
-              <div className="relative">
-                <Label className="text-base font-bold mb-3 block text-primary/80">
-                  Global Database Search
-                </Label>
-                <Autocomplete
-                  type="food"
-                  placeholder="Type food name in English or your language (e.g., Spinach, Rice, പാലക്ക്...)"
-                  onSelect={handleSelectFood}
-                  className="w-full text-lg"
-                />
-                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 p-2 rounded-md">
-                  <Info className="h-3.5 w-3.5 text-primary" />
-                  <span>Matches across all supported languages automatically</span>
-                </div>
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-dashed" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-6 text-muted-foreground font-bold tracking-widest text-[10px]">
-                    Browse Common Indian Foods
-                  </span>
-                </div>
-              </div>
-
+            <CardContent className="p-8 space-y-8">
               {/* Browse Section - Curated List */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -239,7 +254,7 @@ export default function Diet() {
                     Filter by Category
                   </Label>
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-56 h-10 shadow-sm transition-all hover:border-primary/50">
+                    <SelectTrigger className="w-56 h-10 shadow-sm transition-all hover:border-primary/50 rounded-xl">
                       <SelectValue placeholder={t.diet.allCategories} />
                     </SelectTrigger>
                     <SelectContent>
@@ -253,7 +268,7 @@ export default function Diet() {
                   </Select>
                 </div>
 
-                <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar border-t pt-4">
+                <div className="grid gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar pt-2">
                   {filteredFoods.map((food, index) => (
                     <div
                       key={food.id}
@@ -302,7 +317,7 @@ export default function Diet() {
                         <div>
                           <p className="font-semibold text-sm">{meal.food.name}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {mealLabels[meal.mealType]} • <span className="text-primary/80 font-medium">{Math.round(meal.food.calories)}</span> {t.diet.cal}
+                            {mealLabels[meal.mealType]} • <span className="text-primary/80 font-medium">{meal.food.calories?.toFixed(2)}</span> {t.diet.cal}
                           </p>
                         </div>
                         <Button
@@ -333,7 +348,7 @@ export default function Diet() {
                           <div>
                             <p className="font-semibold text-sm">{meal.food.name}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {Math.round(meal.food.calories)} {t.diet.cal} • {Math.round(meal.food.protein)}{t.diet.gProtein}
+                              {meal.food.calories?.toFixed(2)} {t.diet.cal} • {meal.food.protein?.toFixed(2)}{t.diet.gProtein}
                             </p>
                           </div>
                           <Button
@@ -356,14 +371,16 @@ export default function Diet() {
       </div>
 
       {/* Quantity Selector Dialog */}
-      {selectedFood && (
-        <QuantitySelector
-          food={selectedFood}
-          isOpen={showQuantitySelector}
-          onClose={() => setShowQuantitySelector(false)}
-          onAdd={handleAddWithQuantity}
-        />
-      )}
-    </div>
+      {
+        selectedFood && (
+          <QuantitySelector
+            food={selectedFood}
+            isOpen={showQuantitySelector}
+            onClose={() => setShowQuantitySelector(false)}
+            onAdd={handleAddWithQuantity}
+          />
+        )
+      }
+    </div >
   );
 }

@@ -32,17 +32,19 @@ export interface UserProfile {
   primary_goal?: string;
 }
 
+import { API_URL } from "@/config";
+
 // Edge function URL
-const CHAT_URL = "http://localhost:8000/api/ai/chat";
+const CHAT_URL = `${API_URL}/api/ai/chat`;
 
 export function useAIChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Get app context for medications and meals
   const { userMedications, getTodaysMeals, getTodaysCalories, getTodaysProtein } = useApp();
-  
+
   // User profile state (stored locally for now)
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     const saved = localStorage.getItem("medinutri_user_profile");
@@ -63,7 +65,7 @@ export function useAIChat() {
     const medicationNames = userMedications.map(m => m.name);
     const knownInteractions = getInteractionsForMedications(medicationNames);
     const todaysMeals = getTodaysMeals();
-    
+
     return {
       profile: userProfile,
       medications: userMedications,
@@ -78,9 +80,9 @@ export function useAIChat() {
   // Send message and stream response
   const sendMessage = useCallback(async (input: string) => {
     if (!input.trim()) return;
-    
+
     setError(null);
-    
+
     // Add user message
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -88,19 +90,19 @@ export function useAIChat() {
       content: input.trim(),
       timestamp: Date.now(),
     };
-    
+
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
-    
+
     let assistantContent = "";
-    
+
     try {
       // Prepare messages for API (without id and timestamp)
       const apiMessages = [...messages, userMsg].map(m => ({
         role: m.role,
         content: m.content,
       }));
-      
+
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
@@ -112,23 +114,23 @@ export function useAIChat() {
           userContext: buildUserContext(),
         }),
       });
-      
+
       // Handle error responses
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Request failed with status ${response.status}`);
       }
-      
+
       if (!response.body) {
         throw new Error("No response body");
       }
-      
+
       // Stream the response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let textBuffer = "";
       let streamDone = false;
-      
+
       // Create assistant message placeholder
       const assistantId = (Date.now() + 1).toString();
       setMessages(prev => [...prev, {
@@ -137,38 +139,38 @@ export function useAIChat() {
         content: "",
         timestamp: Date.now(),
       }]);
-      
+
       while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         textBuffer += decoder.decode(value, { stream: true });
-        
+
         // Process line-by-line as data arrives
         let newlineIndex: number;
         while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
           let line = textBuffer.slice(0, newlineIndex);
           textBuffer = textBuffer.slice(newlineIndex + 1);
-          
+
           if (line.endsWith("\r")) line = line.slice(0, -1);
           if (line.startsWith(":") || line.trim() === "") continue;
           if (!line.startsWith("data: ")) continue;
-          
+
           const jsonStr = line.slice(6).trim();
           if (jsonStr === "[DONE]") {
             streamDone = true;
             break;
           }
-          
+
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
               assistantContent += content;
               // Update the assistant message with accumulated content
-              setMessages(prev => 
-                prev.map(m => 
-                  m.id === assistantId 
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === assistantId
                     ? { ...m, content: assistantContent }
                     : m
                 )
@@ -181,7 +183,7 @@ export function useAIChat() {
           }
         }
       }
-      
+
       // Final flush
       if (textBuffer.trim()) {
         for (let raw of textBuffer.split("\n")) {
@@ -207,7 +209,7 @@ export function useAIChat() {
           } catch { /* ignore */ }
         }
       }
-      
+
     } catch (err) {
       console.error("AI Chat error:", err);
       setError(err instanceof Error ? err.message : "Failed to get response");

@@ -12,9 +12,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-
-// Constants for API URL
-const API_URL = "http://localhost:8000";
+import { API_URL } from "@/config";
 
 interface DrugSideEffects {
     drug_name: string;
@@ -66,7 +64,7 @@ export default function DrugSafety() {
     return (
         <div className="min-h-screen bg-background pb-12">
             {/* Hero Section */}
-            <section className="bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-white py-12 md:py-20 lg:py-24 px-4 mb-8 rounded-b-[30px] md:rounded-b-[50px] shadow-xl relative overflow-hidden">
+            <section className="bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-white py-12 md:py-20 lg:py-24 px-4 mb-8 rounded-b-[30px] md:rounded-b-[50px] shadow-xl relative overflow-visible">
                 <div className="absolute top-0 left-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&q=80')] opacity-10 mix-blend-overlay bg-cover bg-center"></div>
                 <div className="absolute inset-0 bg-black/20"></div>
 
@@ -97,7 +95,7 @@ export default function DrugSafety() {
 
                         {/* Search Results Dropdown */}
                         {searchQuery.length >= 2 && (searchResults?.results?.length ?? 0) > 0 && (
-                            <Card className="absolute top-full left-4 right-4 sm:left-0 sm:right-0 mt-3 z-50 overflow-hidden shadow-2xl border-white/10 animate-in fade-in zoom-in-95 duration-200">
+                            <Card className="absolute top-full left-4 right-4 sm:left-0 sm:right-0 mt-3 z-[100] overflow-hidden shadow-2xl border-white/10 animate-in fade-in zoom-in-95 duration-200">
                                 <ScrollArea className="h-[300px]">
                                     <div className="p-2">
                                         {searchResults?.results.map((drug, index) => (

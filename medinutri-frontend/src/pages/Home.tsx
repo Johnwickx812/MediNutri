@@ -110,7 +110,7 @@ export default function Home() {
               />
               <StatCard
                 title={t.home.todaysCalories}
-                value={Math.round(getTodaysCalories())}
+                value={getTodaysCalories().toFixed(1)}
                 subtitle={`${getTodaysMeals().length} ${t.home.mealsLogged}`}
                 icon={UtensilsCrossed}
                 className="animate-fade-up stagger-1"

@@ -24,7 +24,7 @@ export function FoodCard({ food, onAdd, isAdded = false, compact = false }: Food
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-sm font-medium text-primary">{food.calories} cal</span>
+              <span className="text-sm font-medium text-primary">{food.calories?.toFixed(2)} cal</span>
               {onAdd && (
                 <Button
                   size="icon"
@@ -54,34 +54,34 @@ export function FoodCard({ food, onAdd, isAdded = false, compact = false }: Food
                 <p className="text-muted-foreground">{food.nameHindi}</p>
               )}
             </div>
-            
+
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">{food.category}</Badge>
               {food.region && (
                 <Badge variant="outline">{food.region}</Badge>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Calories</span>
-                <span className="font-medium">{food.calories}</span>
+                <span className="font-medium">{food.calories?.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Protein</span>
-                <span className="font-medium">{food.protein}g</span>
+                <span className="font-medium">{food.protein?.toFixed(2)}g</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Carbs</span>
-                <span className="font-medium">{food.carbs}g</span>
+                <span className="font-medium">{food.carbs?.toFixed(2)}g</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Fat</span>
-                <span className="font-medium">{food.fat}g</span>
+                <span className="font-medium">{food.fat?.toFixed(2)}g</span>
               </div>
             </div>
           </div>
-          
+
           {onAdd && (
             <Button
               size="icon"

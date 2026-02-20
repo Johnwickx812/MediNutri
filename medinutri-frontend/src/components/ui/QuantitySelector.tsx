@@ -118,11 +118,11 @@ export function QuantitySelector({ food, isOpen, onClose, onAdd }: QuantitySelec
     // Calculate nutritional values based on quantity
     const multiplier = quantity / 100;
     const calculatedNutrition = {
-        calories: Math.round(food.calories * multiplier),
+        calories: (food.calories * multiplier).toFixed(2),
         protein: (food.protein * multiplier).toFixed(2),
         carbs: (food.carbs * multiplier).toFixed(2),
         fat: (food.fat * multiplier).toFixed(2),
-        fiber: food.fiber ? (food.fiber * multiplier).toFixed(2) : "0",
+        fiber: food.fiber ? (food.fiber * multiplier).toFixed(2) : "0.00",
     };
 
     const handlePresetChange = (value: string) => {
@@ -150,7 +150,7 @@ export function QuantitySelector({ food, isOpen, onClose, onAdd }: QuantitySelec
     const handleAdd = () => {
         const adjustedFood: Food = {
             ...food,
-            calories: calculatedNutrition.calories,
+            calories: parseFloat(calculatedNutrition.calories),
             protein: parseFloat(calculatedNutrition.protein),
             carbs: parseFloat(calculatedNutrition.carbs),
             fat: parseFloat(calculatedNutrition.fat),

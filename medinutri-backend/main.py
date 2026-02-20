@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query, Request
+print("!!! MAIN.PY IS LOADING !!!")
 from datetime import datetime
 from fastapi.responses import StreamingResponse
 import json
@@ -57,13 +58,22 @@ def get_db_pool():
             print("CRITICAL: DATABASE_URL not found in environment")
             return None
         
-        # In production/deployment environments (like Vercel), we often need sslmode=require
-        # for many cloud PG providers (Neon, Supabase, Vercel Postgres)
-        if "sslmode=" not in db_url and not os.getenv("IS_LOCAL_DEV"):
+        # Smart SSL handling
+        is_localhost = "localhost" in db_url or "127.0.0.1" in db_url
+        if "sslmode=" not in db_url and not is_localhost:
             separator = "&" if "?" in db_url else "?"
             db_url = f"{db_url}{separator}sslmode=require"
             
         try:
+            # Log connection attempt (masking password)
+            masked_url = db_url
+            if "@" in db_url:
+                prefix = db_url.split("@")[0]
+                if ":" in prefix:
+                    base = prefix.split(":")[0] + ":" + prefix.split(":")[1].split("//")[0] + "//" + prefix.split("//")[1].split(":")[0]
+                    masked_url = f"{base}:****@{db_url.split('@')[1]}"
+            print(f"Connecting to PostgreSQL: {masked_url}")
+            
             pg_pool = SimpleConnectionPool(1, 10, db_url)
             print("Connected to PostgreSQL successfully")
         except Exception as e:
@@ -72,6 +82,7 @@ def get_db_pool():
     return pg_pool
 
 # Initial attempt
+print("--- STARTING DB CONNECTION ATTEMPT ---")
 get_db_pool()
 
 # Auth Configuration

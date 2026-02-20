@@ -1,5 +1,4 @@
 from fastapi import FastAPI, HTTPException, Query, Request
-print("!!! MAIN.PY IS LOADING !!!")
 from datetime import datetime
 from fastapi.responses import StreamingResponse
 import json
@@ -82,7 +81,6 @@ def get_db_pool():
     return pg_pool
 
 # Initial attempt
-print("--- STARTING DB CONNECTION ATTEMPT ---")
 get_db_pool()
 
 # Auth Configuration

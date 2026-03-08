@@ -101,9 +101,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-# Database helper (Kept for compatibility during transition if needed, but primarily PG now)
-# (All direct MongoDB collections removed)
-
 # 6. Load Knowledge Base
 knowledge_base = []
 try:
@@ -187,8 +184,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
-# (serialize_doc removed as MongoDB is no longer used)
 
 
 # 1. Root Endpoint
@@ -618,11 +613,6 @@ async def verify_admin(request: Request):
             finally:
                 pg_pool.putconn(conn)
         
-        # Check Mongo
-        user = users_collection.find_one({"email": email})
-        if user and user.get('role') == 'admin':
-            return email
-            
         raise HTTPException(status_code=403, detail="Admin access required")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -644,8 +634,6 @@ async def get_admin_stats(request: Request):
         finally:
             pg_pool.putconn(conn)
     
-    # MongoDB stats
-    stats['mongodb_users'] = users_collection.count_documents({})
     stats['last_sync'] = datetime.utcnow()
     
     return { "success": True, "stats": stats }
@@ -1117,19 +1105,7 @@ def get_food_details(food_name: str):
             finally:
                 pg_pool.putconn(conn)
 
-        # Fallback to MongoDB
-        query = {
-            "$or": [
-                {"Food": {"$regex": f"^{food_name}$", "$options": "i"}},
-                {"name_hindi": {"$regex": f"^{food_name}$", "$options": "i"}},
-                {"name_tamil": {"$regex": f"^{food_name}$", "$options": "i"}},
-                {"name_malayalam": {"$regex": f"^{food_name}$", "$options": "i"}}
-            ]
-        }
-        doc = foods_collection.find_one(query)
-        if not doc:
-            raise HTTPException(status_code=404, detail="Food not found")
-        return { "success": True, "food": serialize_doc(doc), "db": "mongodb" }
+        raise HTTPException(status_code=404, detail="Food not found")
     except HTTPException:
         raise
     except Exception as e:
@@ -1349,7 +1325,7 @@ def get_stats():
 @app.get("/health")
 def health_check():
     """
-    Check if MongoDB is connected and return healthy/unhealthy status
+    Check if PostgreSQL is connected and return healthy/unhealthy status
     """
     try:
         if pg_pool:
@@ -1858,5 +1834,4 @@ if __name__ == "__main__":
     import uvicorn
     print("Starting MediNutri API Server...")
     print("Database: PostgreSQL (active)")
-    print("MongoDB: Disabled (Architecture simplified)")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -14,8 +14,22 @@ interface User {
     allergies?: string[];
     dietPreference?: 'vegetarian' | 'non-vegetarian' | 'vegan' | 'eggetarian';
     cuisinePreference?: string;
-    onboardingComplete?: boolean;
     role?: 'admin' | 'user';
+
+    // New Nutrition/Health Goal Fields
+    activityLevel?: string;
+    healthGoal?: string;
+    dietaryRestrictions?: string[];
+    medications?: string[];
+    mealsPerDay?: string;
+    cuisineType?: string;
+    customAllergies?: string;
+    calorieGoal?: number;
+    proteinGoal?: number;
+    carbGoal?: number;
+    fatGoal?: number;
+    onboarding_complete?: boolean;
+    email_verified?: boolean;
 }
 
 interface AuthContextType {

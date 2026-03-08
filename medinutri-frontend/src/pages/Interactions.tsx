@@ -100,38 +100,36 @@ export default function Interactions() {
     if (!quickCheckFood.trim() || medicationNames.length === 0) return;
 
     try {
-      // Check this food against ALL user medications
-      const promises = medicationNames.map(drug =>
-        fetch(`${API_URL}/api/search/interactions?food=${encodeURIComponent(quickCheckFood)}&drug=${encodeURIComponent(drug)}`)
-
-          .then(res => res.json())
-      );
-
-      const results = await Promise.all(promises);
-
-      // Collect actual interactions found
-      const interactionsFound = results.flatMap(r => r.success && r.has_interaction ? r.interactions : []);
-
-      const mappedInteractions = interactionsFound.map((i, idx) => ({
-        id: i._id || `qc-${idx}`,
-        medicationName: i.drug_name,
-        foodName: i.food_name,
-        severity: i.severity?.toLowerCase() || 'caution',
-        reason: i.description,
-        recommendation: "Consult doctor."
-      }));
-
-      const hasDanger = mappedInteractions.some(i => i.severity === 'high' || i.severity === 'danger');
-      const hasCaution = mappedInteractions.some(i => i.severity === 'moderate' || i.severity === 'caution');
-
-      setQuickCheckResult({
-        food: quickCheckFood,
-        result: {
-          isSafe: !hasDanger && !hasCaution && mappedInteractions.length === 0,
-          interactions: mappedInteractions
-        }
+      // Use the batch-check endpoint for consolidated results
+      const response = await fetch(`${API_URL}/api/interactions/batch-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          foods: [quickCheckFood],
+          medications: medicationNames
+        })
       });
 
+      const data = await response.json();
+
+      if (data.success) {
+        const mappedInteractions = data.interactions.map((i: any, idx: number) => ({
+          id: i.id || `qc-${idx}`,
+          medicationName: i.drug_name,
+          foodName: i.food_name,
+          severity: i.severity?.toLowerCase() || 'caution',
+          reason: i.description,
+          recommendation: i.recommendation || "Consult your provider."
+        }));
+
+        setQuickCheckResult({
+          food: quickCheckFood,
+          result: {
+            isSafe: data.overall_risk === "safe",
+            interactions: mappedInteractions
+          }
+        });
+      }
     } catch (error) {
       console.error("Quick check failed", error);
     }
@@ -226,12 +224,12 @@ export default function Interactions() {
               )}
               <div className="space-y-2">
                 <h3 className="text-xl font-bold">
-                  {quickCheckResult.food}
+                  {quickCheckFood}: {" "}
                   {quickCheckResult.result.interactions.some((i) => i.severity === "danger" || i.severity === "high")
-                    ? ` - ${t.interactions.avoid}`
+                    ? <span className="text-red-600">Bad ❌ (Avoid)</span>
                     : quickCheckResult.result.interactions.some((i) => i.severity === "caution" || i.severity === "moderate")
-                      ? ` - ${t.interactions.useCaution}`
-                      : ` - ${t.interactions.safeToEat}`}
+                      ? <span className="text-amber-600">Okey ⚠️ (Use Caution)</span>
+                      : <span className="text-green-600">Good ✅ (Safe)</span>}
                 </h3>
                 {quickCheckResult.result.interactions.length > 0 ? (
                   <div className="space-y-3">

@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS users (
     allergies JSONB DEFAULT '[]',
     diet_preference VARCHAR(100),
     cuisine_preference VARCHAR(100),
-    profile_image TEXT
+    profile_image TEXT,
+    role VARCHAR(50) DEFAULT 'user',
+    email_verified BOOLEAN DEFAULT TRUE
 );
 
 -- 2. Foods Table (Nutrition Data)

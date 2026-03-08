@@ -46,3 +46,6 @@ htmlcov/
 # Misc
 *.bak
 *.tmp
+tmp/
+*.pem
+mydata.sql

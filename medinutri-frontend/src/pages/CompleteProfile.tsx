@@ -50,7 +50,7 @@ const CompleteProfile = () => {
             age: Number(formData.age),
             height: Number(formData.height),
             weight: Number(formData.weight),
-            onboardingComplete: true
+            onboarding_complete: true
         });
 
         toast.success("Profile completed successfully!");

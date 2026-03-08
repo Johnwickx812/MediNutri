@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, AlertTriangle, Activity, Pill, Star, ShieldAlert, ShieldCheck, Stethoscope, Wine, Baby } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Autocomplete } from "@/components/ui/Autocomplete";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -58,7 +59,22 @@ export default function DrugSafety() {
     // Handle drug selection
     const handleDrugSelect = (drug: DrugSideEffects) => {
         setSelectedDrug(drug);
-        setSearchQuery(""); // Optional: keep search or clear it
+    };
+
+    const handleDrugSelectByName = async (displayName: string, rawName: string) => {
+        try {
+            // Search by exact name to get full profile
+            const res = await fetch(`${API_URL}/api/drugs/side-effects/search?q=${encodeURIComponent(rawName)}&limit=1`);
+            const data = await res.json();
+            if (data.success && data.results.length > 0) {
+                setSelectedDrug(data.results[0]);
+            } else {
+                toast.error("Drug profile not found");
+            }
+        } catch (error) {
+            console.error("Failed to fetch details", error);
+            toast.error("Failed to load drug safety profile");
+        }
     };
 
     return (
@@ -80,48 +96,14 @@ export default function DrugSafety() {
                         {t.drugSafety.description}
                     </p>
 
-                    <div className="max-w-xl mx-auto mt-6 md:mt-10 relative group px-4 sm:px-0">
+                    <div className="max-w-xl mx-auto mt-6 md:mt-10 relative group px-4 sm:px-0 z-50">
                         <div className="absolute inset-0 bg-white/20 rounded-full blur-xl group-hover:bg-white/30 transition-all duration-300"></div>
-                        <div className="relative flex items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-full p-1.5 md:p-2 shadow-2xl">
-                            <Search className="w-5 h-5 md:w-6 md:h-6 text-blue-200 ml-3 md:ml-4" />
-                            <Input
-                                type="text"
-                                placeholder={t.drugSafety.searchPlaceholder}
-                                className="border-0 bg-transparent text-white placeholder:text-blue-200 focus-visible:ring-0 text-base md:text-lg h-10 md:h-12 px-3 md:px-4"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-
-                        {/* Search Results Dropdown */}
-                        {searchQuery.length >= 2 && (searchResults?.results?.length ?? 0) > 0 && (
-                            <Card className="absolute top-full left-4 right-4 sm:left-0 sm:right-0 mt-3 z-[100] overflow-hidden shadow-2xl border-white/10 animate-in fade-in zoom-in-95 duration-200">
-                                <ScrollArea className="h-[300px]">
-                                    <div className="p-2">
-                                        {searchResults?.results.map((drug, index) => (
-                                            <button
-                                                key={index}
-                                                onClick={() => handleDrugSelect(drug)}
-                                                className="w-full flex items-center justify-between p-3 hover:bg-muted/50 rounded-lg text-left transition-colors group/item"
-                                            >
-                                                <div className="flex-1 min-w-0 pr-4">
-                                                    <p className="font-semibold text-foreground flex items-center gap-2 truncate">
-                                                        <Pill className="w-4 h-4 text-primary shrink-0" />
-                                                        {drug.drug_name}
-                                                    </p>
-                                                    <p className="text-xs md:text-sm text-muted-foreground truncate">
-                                                        {drug.generic_name || drug.medical_condition}
-                                                    </p>
-                                                </div>
-                                                <Badge variant="outline" className="hidden sm:flex opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
-                                                    View Profile
-                                                </Badge>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
-                            </Card>
-                        )}
+                        <Autocomplete
+                            type="drug"
+                            placeholder={t.drugSafety.searchPlaceholder}
+                            onSelect={handleDrugSelectByName}
+                            className="w-full h-14 text-lg rounded-full border-2 border-white/30 bg-white/10 text-white placeholder:text-blue-200 shadow-2xl shadow-blue-900/40 backdrop-blur-md"
+                        />
                     </div>
                 </div>
             </section>
@@ -218,7 +200,7 @@ export default function DrugSafety() {
                                         {selectedDrug.side_effects_full && (
                                             <div className="mt-4 pt-4 border-t">
                                                 <p className="text-sm text-muted-foreground leading-relaxed">
-                                                    {selectedDrug.side_effects_full.slice(0, 500)}...
+                                                    {selectedDrug.side_effects_full.length > 500 ? selectedDrug.side_effects_full.slice(0, 500) + "..." : selectedDrug.side_effects_full}
                                                 </p>
                                             </div>
                                         )}
@@ -238,11 +220,20 @@ export default function DrugSafety() {
                                             {t.drugSafety.medicalCondition}
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent>
-                                        <p className="font-medium text-lg text-primary">{selectedDrug.medical_condition}</p>
+                                    <CardContent className="space-y-4">
+                                        <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-100 dark:border-green-900">
+                                            <p className="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-wider mb-1">Indications</p>
+                                            <p className="font-semibold text-primary">{selectedDrug.medical_condition}</p>
+                                        </div>
+
+                                        <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900">
+                                            <p className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-1">Active Composition</p>
+                                            <p className="font-medium text-sm">{selectedDrug.generic_name}</p>
+                                        </div>
+
                                         {selectedDrug.medical_condition_description && (
-                                            <p className="text-sm text-muted-foreground mt-2">
-                                                {selectedDrug.medical_condition_description.slice(0, 150)}...
+                                            <p className="text-sm text-muted-foreground leading-relaxed px-1">
+                                                {selectedDrug.medical_condition_description}
                                             </p>
                                         )}
                                     </CardContent>

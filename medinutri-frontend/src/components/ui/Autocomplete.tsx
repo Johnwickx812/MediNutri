@@ -16,7 +16,7 @@ interface Suggestion {
 interface AutocompleteProps {
     type: "food" | "drug";
     placeholder?: string;
-    onSelect: (value: string) => void;
+    onSelect: (name: string, raw: string) => void;
     className?: string;
 }
 
@@ -52,8 +52,8 @@ export function Autocomplete({ type, placeholder, onSelect, className }: Autocom
             try {
                 // Pass current language to the backend
                 const endpoint = type === "food"
-                    ? `${API_URL}/foods/autocomplete?q=${encodeURIComponent(query)}&lang=${language}`
-                    : `${API_URL}/drugs/autocomplete?q=${encodeURIComponent(query)}`;
+                    ? `${API_URL}/api/search/autocomplete?q=${encodeURIComponent(query)}&lang=${language}&type=food`
+                    : `${API_URL}/api/search/autocomplete?q=${encodeURIComponent(query)}&type=drug`;
 
                 console.log(`Autocomplete fetching: ${endpoint}`);
                 const response = await fetch(endpoint);
@@ -106,7 +106,7 @@ export function Autocomplete({ type, placeholder, onSelect, className }: Autocom
             </div>
 
             {showResults && (
-                <div className="absolute z-[100] w-full mt-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-2xl shadow-2xl max-h-[400px] overflow-auto animate-in fade-in zoom-in duration-200">
+                <div className="absolute z-[100] w-full mt-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-2xl shadow-2xl max-h-[400px] overflow-auto animate-in fade-in zoom-in duration-200 text-slate-900 dark:text-white">
                     {results.length > 0 ? (
                         <div className="p-2 space-y-1">
                             {/* Group by category if it's a mix, but here we usually have one type */}
@@ -120,7 +120,7 @@ export function Autocomplete({ type, placeholder, onSelect, className }: Autocom
                                     className="group flex items-center gap-4 px-4 py-3 hover:bg-primary hover:text-white rounded-xl cursor-pointer transition-all duration-200"
                                     onClick={() => {
                                         setQuery(item.name);
-                                        onSelect(item.raw);
+                                        onSelect(item.name, item.raw);
                                         setShowResults(false);
                                     }}
                                 >

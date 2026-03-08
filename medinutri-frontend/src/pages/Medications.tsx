@@ -71,16 +71,16 @@ export default function Medications() {
     setDialogOpen(false);
   };
 
-  const handleSelectDrug = async (drugName: string) => {
+  const handleSelectDrug = async (displayName: string, rawName: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/drug/${encodeURIComponent(drugName)}`);
+      const response = await fetch(`${API_URL}/api/drug/${encodeURIComponent(rawName)}`);
       const data = await response.json();
 
       if (data.success && data.drug) {
         const med = data.drug;
         // Construct medication object from API details and populate form
         setFormData({
-          name: med["Medicine Name"],
+          name: displayName, // Use the split name from autocomplete
           dosage: med["Composition"] || "",
           frequency: "Once daily", // Default
           time: "08:00", // Default

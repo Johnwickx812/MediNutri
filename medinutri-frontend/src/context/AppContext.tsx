@@ -33,6 +33,8 @@ interface AppContextType {
   // Stats
   getTodaysCalories: () => number;
   getTodaysProtein: () => number;
+  getTodaysCarbs: () => number;
+  getTodaysFat: () => number;
 
   // History Management
   hasOldData: boolean;
@@ -222,7 +224,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const getTodaysProtein = () => {
-    return getTodaysMeals().reduce((sum, meal) => sum + meal.food.protein, 0);
+    return getTodaysMeals().reduce((sum, meal) => sum + (meal.food.protein || 0), 0);
+  };
+
+  const getTodaysCarbs = () => {
+    return getTodaysMeals().reduce((sum, meal) => sum + (meal.food.carbs || 0), 0);
+  };
+
+  const getTodaysFat = () => {
+    return getTodaysMeals().reduce((sum, meal) => sum + (meal.food.fat || 0), 0);
   };
 
   const toggleReminder = (medicationId: string) => {
@@ -273,6 +283,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         getTodaysMeals,
         getTodaysCalories,
         getTodaysProtein,
+        getTodaysCarbs,
+        getTodaysFat,
         hasOldData,
         clearOldData,
         reminderSettings,

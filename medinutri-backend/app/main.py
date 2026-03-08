@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routes import auth, patients, nutritionists, food_logs, health_metrics, appointments, ai
+from app.routes import auth, patients, nutritionists, food_logs, health_metrics, appointments, ai, diet
 
 app = FastAPI(
     title="MediNutri Backend",
@@ -26,6 +26,7 @@ app.include_router(food_logs.router, prefix="/api")
 app.include_router(health_metrics.router, prefix="/api")
 app.include_router(appointments.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
+app.include_router(diet.router, prefix="/api")
 
 from app.data_manager import data_manager
 

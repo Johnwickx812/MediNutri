@@ -11,6 +11,9 @@ class UserBase(BaseModel):
     role: UserRole
     phone: Optional[str] = None
     date_of_birth: Optional[date] = None
+    language_preference: Optional[str] = "en"
+    email_verified: bool = True
+
 
 class UserCreate(UserBase):
     password: str
@@ -19,9 +22,40 @@ class UserResponse(UserBase):
     id: int
     created_at: datetime
     is_active: bool
+    
+    # Flattened Profile Fields
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    gender: Optional[str] = None
+    medical_conditions: Optional[Dict[str, Any]] = None
+    allergies: List[str] = []
+    dietary_restrictions: List[str] = []
+    health_goals: Optional[str] = None
+    activity_level: Optional[str] = None
+    calorie_goal: Optional[float] = None
+    protein_goal: Optional[float] = None
+    carb_goal: Optional[float] = None
+    fat_goal: Optional[float] = None
+    meals_per_day: Optional[int] = None
+    cuisine_type: Optional[str] = None
+    custom_allergies: Optional[str] = None
+    onboarding_complete: bool = False
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def model_validate(cls, obj, **kwargs):
+        # Custom validation to flatten profile data into user response
+        user_dict = {}
+        if hasattr(obj, "__dict__"):
+            user_dict = {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+            if hasattr(obj, "patient_profile") and obj.patient_profile:
+                profile = obj.patient_profile
+                for c in profile.__table__.columns:
+                    if c.name not in ["id", "user_id"]: # Avoid overwriting user id
+                        user_dict[c.name] = getattr(profile, c.name)
+        return super().model_validate(user_dict, **kwargs)
 
 # Token Schemas
 class Token(BaseModel):
@@ -43,6 +77,17 @@ class PatientProfileBase(BaseModel):
     health_goals: Optional[str] = None
     target_weight: Optional[float] = None
     activity_level: Optional[str] = None
+    current_medications: Optional[List[Dict[str, Any]]] = None
+    food_preferences: Optional[Dict[str, Any]] = None
+    calorie_goal: Optional[float] = None
+    protein_goal: Optional[float] = None
+    carb_goal: Optional[float] = None
+    fat_goal: Optional[float] = None
+    meals_per_day: Optional[int] = None
+    cuisine_type: Optional[str] = None
+    custom_allergies: Optional[str] = None
+    onboarding_complete: bool = False
+
 
 class PatientProfileCreate(PatientProfileBase):
     user_id: int

@@ -71,3 +71,46 @@ async def login(
         data={"sub": user.email, "role": user.role}
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+from app.utils.security import get_current_user
+from typing import Annotated
+from app.schemas.all_schemas import UserUpdate
+
+@router.get("/me", response_model=UserResponse)
+async def read_auth_me(current_user: Annotated[User, Depends(get_current_user)]):
+    return current_user
+
+@router.patch("/me", response_model=UserResponse)
+async def update_auth_me(
+    user_update: Dict[str, Any],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db)
+):
+    # This route handles updating user basic info and linked profile data
+    # For now, it's a simple implementation to support frontend requirements
+    
+    # Update User fields
+    user_fields = ["first_name", "last_name", "phone", "language_preference"]
+    for field in user_fields:
+        if field in user_update:
+            setattr(current_user, field, user_update[field])
+    
+    # Update Patient Profile fields if user is a patient
+    if current_user.role == UserRole.PATIENT:
+        result = await db.execute(select(PatientProfile).where(PatientProfile.user_id == current_user.id))
+        profile = result.scalar_one_or_none()
+        if profile:
+            profile_fields = [
+                "height", "weight", "gender", "medical_conditions", "allergies", 
+                "dietary_restrictions", "health_goals", "activity_level",
+                "calorie_goal", "protein_goal", "carb_goal", "fat_goal",
+                "meals_per_day", "cuisine_type", "custom_allergies",
+                "onboarding_complete"
+            ]
+            for field in profile_fields:
+                if field in user_update:
+                    setattr(profile, field, user_update[field])
+    
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user

@@ -56,6 +56,9 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    language_preference: Mapped[str] = mapped_column(String(10), default="en") # en, ml, ta, hi
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=True)
+
 
     # Relationships
     patient_profile: Mapped[Optional["PatientProfile"]] = Relationship(back_populates="user", cascade="all, delete-orphan")
@@ -75,6 +78,21 @@ class PatientProfile(Base):
     health_goals: Mapped[Optional[str]] = mapped_column(Text)
     target_weight: Mapped[Optional[float]] = mapped_column(Float)
     activity_level: Mapped[Optional[str]] = mapped_column(String(50))
+    
+    # New fields for advanced planning
+    current_medications: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON) # List of {name, dosage, frequency}
+    food_preferences: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON) # {diet_type, region, dislikes, budget}
+
+    # Nutrition Goals
+    calorie_goal: Mapped[Optional[float]] = mapped_column(Float)
+    protein_goal: Mapped[Optional[float]] = mapped_column(Float)
+    carb_goal: Mapped[Optional[float]] = mapped_column(Float)
+    fat_goal: Mapped[Optional[float]] = mapped_column(Float)
+    meals_per_day: Mapped[Optional[int]] = mapped_column(Integer)
+    cuisine_type: Mapped[Optional[str]] = mapped_column(String(100))
+    custom_allergies: Mapped[Optional[str]] = mapped_column(Text)
+    onboarding_complete: Mapped[bool] = mapped_column(Boolean, default=False)
+
 
     # Relationships
     user: Mapped["User"] = Relationship(back_populates="patient_profile")
@@ -201,3 +219,13 @@ class Appointment(Base):
     # Relationships
     patient: Mapped["PatientProfile"] = Relationship(back_populates="appointments")
     nutritionist: Mapped["NutritionistProfile"] = Relationship(back_populates="appointments")
+class FoodDrugInteraction(Base):
+    __tablename__ = "food_drug_interactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    drug_name: Mapped[str] = mapped_column(String(255), index=True)
+    food_name: Mapped[str] = mapped_column(String(255), index=True)
+    severity: Mapped[str] = mapped_column(String(50)) # e.g., "High", "Moderate", "Low"
+    interaction_text: Mapped[str] = mapped_column(Text)
+    recommendation: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[Optional[List[float]]] = mapped_column(JSON) # Store embeddings for vector search

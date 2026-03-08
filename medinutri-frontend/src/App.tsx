@@ -17,7 +17,9 @@ import AIAssistant from "./pages/AIAssistant";
 import Feedback from "./pages/Feedback";
 import Profile from "./pages/Profile";
 import CompleteProfile from "./pages/CompleteProfile";
+import DietGoalSetting from "./pages/DietGoalSetting";
 import Admin from "./pages/Admin";
+import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -39,8 +41,13 @@ const AppRoutes = () => {
     );
   }
 
-  if (isAuthenticated && !user?.onboardingComplete && window.location.pathname !== "/complete-profile") {
+  if (isAuthenticated && !user?.onboarding_complete && window.location.pathname !== "/complete-profile") {
     return <Navigate to="/complete-profile" replace />;
+  }
+
+  // If already complete, don't allow access to complete-profile
+  if (isAuthenticated && user?.onboarding_complete && window.location.pathname === "/complete-profile") {
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -58,6 +65,7 @@ const AppRoutes = () => {
           <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route path="/medications" element={<Medications />} />
           <Route path="/diet" element={<Diet />} />
+          <Route path="/diet-goals" element={<DietGoalSetting />} />
           <Route path="/interactions" element={<Interactions />} />
           <Route path="/drug-safety" element={<DrugSafety />} />
           <Route path="/settings" element={<Settings />} />

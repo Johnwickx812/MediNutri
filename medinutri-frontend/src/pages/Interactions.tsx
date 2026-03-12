@@ -28,6 +28,14 @@ export default function Interactions() {
 
   const medicationNames = userMedications.map((m) => m.name);
 
+  const mapSeverity = (raw: string | undefined): "danger" | "caution" | "safe" => {
+    const value = raw?.toLowerCase() || "";
+    if (["high", "severe", "danger"].includes(value)) return "danger";
+    if (["medium", "moderate", "caution", "warning"].includes(value)) return "caution";
+    if (["low", "mild", "safe"].includes(value)) return "safe";
+    return "caution";
+  };
+
   // Fetch all known interactions for the user's medications from Backend
   useEffect(() => {
     async function fetchInteractions() {
@@ -53,12 +61,12 @@ export default function Interactions() {
         // Backend returns: { food_name, drug_name, interaction_type, severity, description }
         // Frontend expects: { id, medicationName, foodName, severity, reason, recommendation }
         const mapped = combined.map((i, idx) => ({
-          id: i._id || `api-${idx}`,
+          id: i.id || i._id || `api-${idx}`,
           medicationName: i.drug_name,
           foodName: i.food_name,
-          severity: i.severity?.toLowerCase() || 'caution',
-          reason: i.description || i.interaction_type,
-          recommendation: "Consult your doctor." // Backend might need to provide this
+          severity: mapSeverity(i.severity),
+          reason: i.description || i.interaction_text || i.interaction_type,
+          recommendation: i.recommendation || "Consult your doctor." // Backend might need to provide this
         }));
 
         // Deduplicate by ID if necessary
@@ -85,9 +93,9 @@ export default function Interactions() {
   }, [allInteractions, searchQuery]);
 
   // Categorize interactions
-  const dangerInteractions = filteredInteractions.filter((i) => i.severity === "danger" || i.severity === "high");
-  const cautionInteractions = filteredInteractions.filter((i) => i.severity === "caution" || i.severity === "moderate");
-  const safeInteractions = filteredInteractions.filter((i) => i.severity === "safe" || i.severity === "low");
+  const dangerInteractions = filteredInteractions.filter((i) => i.severity === "danger");
+  const cautionInteractions = filteredInteractions.filter((i) => i.severity === "caution");
+  const safeInteractions = filteredInteractions.filter((i) => i.severity === "safe");
 
   // Quick check a food
   const [quickCheckFood, setQuickCheckFood] = useState("");
@@ -117,8 +125,8 @@ export default function Interactions() {
           id: i.id || `qc-${idx}`,
           medicationName: i.drug_name,
           foodName: i.food_name,
-          severity: i.severity?.toLowerCase() || 'caution',
-          reason: i.description,
+          severity: mapSeverity(i.severity),
+          reason: i.description || i.interaction_text,
           recommendation: i.recommendation || "Consult your provider."
         }));
 
@@ -207,17 +215,17 @@ export default function Interactions() {
 
       {/* Quick Check Result */}
       {quickCheckResult && (
-        <Card className={`animate-scale-in border-2 ${quickCheckResult.result.interactions.some((i) => i.severity === "danger" || i.severity === "high")
+        <Card className={`animate-scale-in border-2 ${quickCheckResult.result.interactions.some((i) => i.severity === "danger")
           ? "border-red-500 bg-red-50 dark:bg-red-950/20"
-          : quickCheckResult.result.interactions.some((i) => i.severity === "caution" || i.severity === "moderate")
+          : quickCheckResult.result.interactions.some((i) => i.severity === "caution")
             ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
             : "border-green-500 bg-green-50 dark:bg-green-950/20"
           }`}>
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
-              {quickCheckResult.result.interactions.some((i) => i.severity === "danger" || i.severity === "high") ? (
+              {quickCheckResult.result.interactions.some((i) => i.severity === "danger") ? (
                 <XCircle className="h-10 w-10 text-red-600 shrink-0" />
-              ) : quickCheckResult.result.interactions.some((i) => i.severity === "caution" || i.severity === "moderate") ? (
+              ) : quickCheckResult.result.interactions.some((i) => i.severity === "caution") ? (
                 <AlertTriangle className="h-10 w-10 text-amber-600 shrink-0" />
               ) : (
                 <CheckCircle className="h-10 w-10 text-green-600 shrink-0" />
@@ -225,9 +233,9 @@ export default function Interactions() {
               <div className="space-y-2">
                 <h3 className="text-xl font-bold">
                   {quickCheckFood}: {" "}
-                  {quickCheckResult.result.interactions.some((i) => i.severity === "danger" || i.severity === "high")
+                  {quickCheckResult.result.interactions.some((i) => i.severity === "danger")
                     ? <span className="text-red-600">Bad ❌ (Avoid)</span>
-                    : quickCheckResult.result.interactions.some((i) => i.severity === "caution" || i.severity === "moderate")
+                    : quickCheckResult.result.interactions.some((i) => i.severity === "caution")
                       ? <span className="text-amber-600">Okey ⚠️ (Use Caution)</span>
                       : <span className="text-green-600">Good ✅ (Safe)</span>}
                 </h3>

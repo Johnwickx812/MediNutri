@@ -87,9 +87,17 @@ export default function Diet() {
   const safetyAlerts = useMemo(() => {
     if (!user?.medications || user.medications.length === 0) return [];
 
+    const medicationNames: string[] = Array.isArray(user.medications)
+      ? user.medications.map((m: any) =>
+          typeof m === "string" ? m : (m.name || m.medication_name || "")
+        ).filter(Boolean)
+      : [];
+
+    if (medicationNames.length === 0) return [];
+
     const alerts: any[] = [];
     todaysMeals.forEach(meal => {
-      const safety = checkFoodSafety(meal.food.name, user.medications || []);
+      const safety = checkFoodSafety(meal.food.name, medicationNames);
       if (safety.interactions.length > 0) {
         safety.interactions.forEach(interaction => {
           if (!alerts.find(a => a.food === meal.food.name && a.medication === interaction.medicationName)) {
@@ -245,7 +253,14 @@ export default function Diet() {
                         protein: m.food.protein,
                         carbs: m.food.carbs,
                         fat: m.food.fat,
-                        safetyStatus: checkFoodSafety(m.food.name, user?.medications || []).isSafe ? "safe" : "caution"
+                        safetyStatus: checkFoodSafety(
+                          m.food.name,
+                          (Array.isArray(user?.medications)
+                            ? (user?.medications as any[]).map((med: any) =>
+                                typeof med === "string" ? med : (med.name || med.medication_name || "")
+                              ).filter(Boolean)
+                            : [])
+                        ).isSafe ? "safe" : "caution"
                       }))}
                       onAdd={() => { setSelectedMealType("breakfast"); setActiveTab("log"); }}
                     />

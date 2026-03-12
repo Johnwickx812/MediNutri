@@ -30,38 +30,72 @@ class DietEngine:
         return bmr * multipliers.get(activity_level.lower(), 1.2)
 
     async def get_diet_targets(self, profile: PatientProfile, age: int) -> Dict[str, Any]:
-        bmr = self.calculate_bmr(profile.weight, profile.height, age, profile.gender)
-        tdee = self.calculate_tdee(bmr, profile.activity_level or "sedentary")
+        # --- Core energy calculations using full user profile ---
+        weight = profile.weight or 70.0  # kg
+        height = profile.height or 170.0  # cm
+        gender = profile.gender or "male"
+        activity_level = profile.activity_level or "sedentary"
+
+        bmr = self.calculate_bmr(weight, height, age, gender)
+        tdee = self.calculate_tdee(bmr, activity_level)
         
-        # Goal adjustment
         goal = (profile.health_goals or "").lower()
         target_calories = tdee
-        if "loss" in goal:
+
+        # Goal-based calorie adjustment (for normal, gym, and clinical users)
+        if any(k in goal for k in ["loss", "fat loss", "cut"]):
+            # Moderate deficit for sustainable weight loss
             target_calories -= 500
-        elif "gain" in goal:
+        elif any(k in goal for k in ["gain", "bulk", "muscle"]):
+            # Small surplus for muscle gain
             target_calories += 300
-            
-        # Macro splits
-        protein_ratio = 0.25 if "muscle" in goal else 0.20
-        fats_ratio = 0.25
-        carbs_ratio = 1.0 - protein_ratio - fats_ratio
-        
-        # Adjust for medical conditions
+
+        # Safety clamps to avoid extreme values
+        target_calories = max(1200, min(4500, target_calories))
+
+        # --- Protein: grams per kg depending on activity & goals ---
+        is_gym_or_active = any(
+            k in goal for k in ["gym", "muscle", "strength", "athlete", "workout"]
+        ) or activity_level.lower() in ["moderate", "active", "very_active"]
+
+        # Adjust for medical conditions (e.g., renal)
         conditions = profile.medical_conditions or {}
         limit_sodium = any(c in str(conditions).lower() for c in ["hypertension", "bp", "heart"])
         limit_sugar = any(c in str(conditions).lower() for c in ["diabetes", "sugar"])
         limit_protein = any(c in str(conditions).lower() for c in ["kidney", "renal"])
-        
+
         if limit_protein:
-            protein_ratio = 0.12 # Lower protein for kidney patients
-            carbs_ratio = 1.0 - protein_ratio - fats_ratio
+            # Kidney / renal patients: conservative protein
+            protein_per_kg = 0.8
+        elif is_gym_or_active:
+            # Gym / active users: higher protein for recovery
+            protein_per_kg = 1.6
+        else:
+            # General population
+            protein_per_kg = 1.2
+
+        protein_grams = round(weight * protein_per_kg)
+        protein_cals = protein_grams * 4
+
+        # Fats: ~25% of total calories
+        fats_cals = target_calories * 0.25
+        fats_grams = round(fats_cals / 9)
+
+        # Remaining calories go to carbs
+        remaining_cals = max(target_calories - protein_cals - fats_cals, target_calories * 0.15)
+        carbs_cals = remaining_cals
+        carbs_grams = round(carbs_cals / 4)
+
+        protein_ratio = protein_cals / target_calories
+        fats_ratio = fats_cals / target_calories
+        carbs_ratio = carbs_cals / target_calories
 
         targets = {
             "target_calories": round(target_calories),
             "macros": {
-                "protein": round((target_calories * protein_ratio) / 4),
-                "carbs": round((target_calories * carbs_ratio) / 4),
-                "fats": round((target_calories * fats_ratio) / 9),
+                "protein": protein_grams,
+                "carbs": carbs_grams,
+                "fats": fats_grams,
                 "fiber": 30 # General RDA
             },
             "restrictions": {
@@ -183,23 +217,34 @@ class DietEngine:
         if not medications: return "Safe"
         
         for med in medications:
-            med_name = med.get("name", "")
+            # Support both dict-based meds ({name, dosage,...}) and plain string names
+            if isinstance(med, str):
+                med_name = med
+            elif isinstance(med, dict):
+                med_name = med.get("name") or med.get("medication_name") or ""
+            else:
+                med_name = str(med) if med is not None else ""
+
             if not med_name: continue
             
             # Split combined medications if necessary
             med_components = [m.strip() for m in med_name.split('+')] if '+' in med_name else [med_name]
             
             for component in med_components:
-                # Check for direct food-drug interactions in the database
-                stmt = select(FoodDrugInteraction).where(
-                    FoodDrugInteraction.drug_name.ilike(f"%{component}%"),
-                    FoodDrugInteraction.food_name.ilike(f"%{food.name}%")
-                )
-                result = await db.execute(stmt)
-                interaction = result.scalars().first()
-                
-                if interaction:
-                    return f"Warning ({component}): {interaction.severity} Interaction - {interaction.interaction_text}"
+                try:
+                    # Check for direct food-drug interactions in the database
+                    stmt = select(FoodDrugInteraction).where(
+                        FoodDrugInteraction.drug_name.ilike(f"%{component}%"),
+                        FoodDrugInteraction.food_name.ilike(f"%{food.name}%")
+                    )
+                    result = await db.execute(stmt)
+                    interaction = result.scalars().first()
+                    
+                    if interaction:
+                        return f"Warning ({component}): {interaction.severity} Interaction - {interaction.interaction_text}"
+                except Exception as e:
+                    logger.warning(f"Interaction check failed for {component} + {food.name}: {e}")
+                    continue
         
         return "Safe"
 

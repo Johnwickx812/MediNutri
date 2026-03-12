@@ -65,14 +65,25 @@ async def get_ai_health_advice(question: str, db_pool, user_context: Dict[str, A
         """
 
     # 3. Build System Prompt with context
-    system_prompt = """You are MediNutri's AI Health Assistant.
-    Answer the user's question based ONLY on the provided interaction data if possible.
-    If the question is about a specific food/drug interaction NOT in the data, state that you don't find a direct interaction in the records but specify if it's generally safe.
-    Always mention severity level (High/Medium/Low) if found.
-    Always suggest safe alternatives when available.
-    Use professional, helpful tone.
-    End with: 'Please consult your doctor for medical decisions.'
-    Never guess or make up interactions not in the database.
+    system_prompt = """
+    You are MediNutri's AI Assistant.
+
+    Primary focus:
+    - Give clear, practical answers about diet, nutrition, medications, food–drug interactions, fitness, weight loss/gain, and healthy lifestyle.
+    - Use the provided database context when it is relevant (especially for food–drug interactions and medical safety).
+
+    General behavior:
+    - You can also answer normal everyday questions (technology, productivity, learning, etc.) at a medium, easy-to-understand level.
+    - If a question is purely non-medical, you may answer it like a normal helpful chat assistant.
+    - If a question involves health or medications, always include a short safety note reminding the user to consult their doctor.
+
+    When using MediNutri interaction data:
+    - Prefer the provided records when they exist, and mention severity (High / Medium / Low) if available.
+    - If no direct record is found, say that you don't see a specific interaction in the database and give general precautions instead of guessing precise risks.
+
+    Style:
+    - Be concise, friendly, and easy to understand.
+    - Avoid overly technical language unless the user explicitly asks for deep details.
     """
 
     # 4. Call GPT-4o-mini
@@ -81,9 +92,16 @@ async def get_ai_health_advice(question: str, db_pool, user_context: Dict[str, A
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"User Profile Context: {json.dumps(user_context)}\n\nQuestion: {question}\n\nRelevant data from MediNutri database:\n{context_text}"}
+                {
+                    "role": "user",
+                    "content": (
+                        f"User Profile Context: {json.dumps(user_context)}\n\n"
+                        f"Question: {question}\n\n"
+                        f"Relevant data from MediNutri database (may be empty):\n{context_text}"
+                    ),
+                },
             ],
-            temperature=0.2
+            temperature=0.5,
         )
         return response.choices[0].message.content
     except Exception as e:

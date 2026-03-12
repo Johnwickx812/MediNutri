@@ -61,7 +61,7 @@ export function AIDietEngine() {
     const [dietPlan, setDietPlan] = useState<DietPlan | null>(null);
 
     const generatePlan = async () => {
-        if (!user?.id) return;
+        if (!user) return;
 
         // Check if profile is complete (needed for BMR calculation)
         if (!user.height || !user.weight) {
@@ -75,30 +75,88 @@ export function AIDietEngine() {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/api/diet/generate?user_id=${user.id}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                }
+            // --- Local calculation mirroring backend DietEngine ---
+            const weight = user.weight || 70; // kg
+            const height = user.height || 170; // cm
+            const gender = (user.gender || "male").toLowerCase();
+            const activityLevel = (user.activityLevel || "sedentary").toLowerCase();
+            const goals = (user.healthGoals || "").toLowerCase();
+
+            // 1. Estimate age if available (fallback 30)
+            const age = user.age && user.age > 0 ? user.age : 30;
+
+            // 2. BMR (Mifflin–St Jeor)
+            const bmr =
+                gender === "male"
+                    ? 10 * weight + 6.25 * height - 5 * age + 5
+                    : 10 * weight + 6.25 * height - 5 * age - 161;
+
+            // 3. TDEE via activity multiplier
+            const multipliers: Record<string, number> = {
+                sedentary: 1.2,
+                light: 1.375,
+                moderate: 1.55,
+                active: 1.725,
+                very_active: 1.9,
+            };
+            const tdee = bmr * (multipliers[activityLevel] || 1.2);
+
+            // 4. Goal-based calorie adjustment
+            let targetCalories = tdee;
+            if (goals.includes("loss") || goals.includes("fat loss") || goals.includes("cut")) {
+                targetCalories -= 500;
+            } else if (goals.includes("gain") || goals.includes("bulk") || goals.includes("muscle")) {
+                targetCalories += 300;
+            }
+            // Clamp
+            targetCalories = Math.min(4500, Math.max(1200, targetCalories));
+
+            // 5. Determine protein per kg (general vs gym vs renal)
+            const conditionsText = JSON.stringify(user.medicalConditions || "").toLowerCase();
+            const limitProtein = conditionsText.includes("kidney") || conditionsText.includes("renal");
+            const isGymOrActive =
+                goals.includes("gym") ||
+                goals.includes("muscle") ||
+                goals.includes("strength") ||
+                goals.includes("athlete") ||
+                goals.includes("workout") ||
+                ["moderate", "active", "very_active"].includes(activityLevel);
+
+            let proteinPerKg = 1.2;
+            if (limitProtein) {
+                proteinPerKg = 0.8;
+            } else if (isGymOrActive) {
+                proteinPerKg = 1.6;
+            }
+
+            const proteinGrams = Math.round(weight * proteinPerKg);
+            const proteinCals = proteinGrams * 4;
+
+            // 6. Fats ~25% of calories
+            const fatCals = targetCalories * 0.25;
+            const fatGrams = Math.round(fatCals / 9);
+
+            // 7. Remaining calories to carbs
+            const remainingCals = Math.max(targetCalories - proteinCals - fatCals, targetCalories * 0.15);
+            const carbCals = remainingCals;
+            const carbGrams = Math.round(carbCals / 4);
+
+            const plan: DietPlan = {
+                daily_calorie_target: Math.round(targetCalories),
+                macro_split: {
+                    protein: String(proteinGrams),
+                    carbs: String(carbGrams),
+                    fats: String(fatGrams),
+                    fiber: "30",
+                },
+                meals: [],
+            };
+
+            setDietPlan(plan);
+            toast({
+                title: "Diet Plan Generated",
+                description: "Your personalized medical-aware diet plan is ready.",
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || "Failed to generate plan");
-            }
-
-            const data = await response.json();
-
-            // Basic validation of data structure
-            if (data && data.daily_calorie_target && data.macro_split) {
-                setDietPlan(data);
-                toast({
-                    title: "Diet Plan Generated",
-                    description: "Your personalized medical-aware diet plan is ready.",
-                });
-            } else {
-                throw new Error("Invalid data format received from server");
-            }
         } catch (error: any) {
             console.error("Failed to generate diet plan", error);
             toast({

@@ -119,7 +119,7 @@ const CompleteProfile = () => {
                                 <CardDescription className="font-bold text-slate-500 uppercase tracking-widest text-[10px]">Mandatory for BMI & Calories</CardDescription>
                             </CardHeader>
                             <CardContent className="p-8 space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="age" className="text-white font-bold ml-1">Age</Label>
                                         <Input
@@ -142,7 +142,7 @@ const CompleteProfile = () => {
                                         </Select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="height" className="text-white font-bold ml-1">Height (cm)</Label>
                                         <Input
@@ -244,7 +244,7 @@ const CompleteProfile = () => {
                                 <CardDescription className="font-bold text-slate-500 uppercase tracking-widest text-[10px]">Crucial for your safety</CardDescription>
                             </CardHeader>
                             <CardContent className="p-8">
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {ALLERGIES.map(allergy => (
                                         <div
                                             key={allergy}

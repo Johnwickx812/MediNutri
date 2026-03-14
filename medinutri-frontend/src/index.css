@@ -132,7 +132,7 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden w-full max-w-full;
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   }
 

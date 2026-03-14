@@ -165,45 +165,44 @@ export default function Diet() {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Top Navigation / Branding */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tighter dark:text-white flex items-center gap-2">
-              <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center text-white">
-                <LayoutDashboard className="h-6 w-6" />
+            <h1 className="text-2xl md:text-3xl font-black tracking-tighter dark:text-white flex items-center gap-2">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-primary rounded-xl md:rounded-2xl flex items-center justify-center text-white shrink-0">
+                <LayoutDashboard className="h-4 w-4 md:h-6 md:w-6" />
               </div>
               MediNutri <span className="text-primary">Diet</span>
             </h1>
-            <p className="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest">Medical-Grade Nutrition Tracking</p>
+            <p className="text-[10px] md:text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest">Medical-Grade Nutrition Tracking</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pt-2 md:pt-0">
             <Button
               variant="outline"
-              className="rounded-2xl h-12 border-slate-200 dark:border-white/5 font-bold gap-2"
+              className="rounded-xl md:rounded-2xl h-10 md:h-12 border-slate-200 dark:border-white/5 font-bold gap-2 text-xs md:text-sm px-4 md:px-6"
               onClick={() => navigate("/diet-goals")}
             >
-              <Settings2 className="h-4 w-4" />
+              <Settings2 className="h-3 w-3 md:h-4 md:w-4" />
               Goals
             </Button>
-            <Button className="rounded-2xl h-12 px-6 font-black gap-2 shadow-lg shadow-primary/20">
-              <Sparkles className="h-4 w-4" />
+            <Button className="rounded-xl md:rounded-2xl h-10 md:h-12 px-4 md:px-6 font-black gap-2 shadow-lg shadow-primary/20 text-xs md:text-sm">
+              <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
               AI Connect
             </Button>
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="bg-slate-100 dark:bg-white/5 p-1 rounded-[2.5rem] h-16 w-full md:w-fit border dark:border-white/5">
-            <TabsTrigger value="dashboard" className="rounded-[2rem] px-8 h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-lg font-bold gap-2">
-              <LayoutDashboard className="h-4 w-4" /> Dashboard
+          <TabsList className="bg-slate-100 dark:bg-white/5 p-1 rounded-2xl md:rounded-[2.5rem] h-14 md:h-16 w-full flex overflow-x-auto overflow-y-hidden justify-start md:justify-center border dark:border-white/5">
+            <TabsTrigger value="dashboard" className="rounded-xl md:rounded-[2rem] px-4 md:px-8 h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-lg font-bold gap-2 whitespace-nowrap text-xs md:text-sm shrink-0">
+              <LayoutDashboard className="h-3 w-3 md:h-4 md:w-4" /> Dashboard
             </TabsTrigger>
-            <TabsTrigger value="log" className="rounded-[2rem] px-8 h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-lg font-bold gap-2">
-              <PlusCircle className="h-4 w-4" /> Log Meal
+            <TabsTrigger value="log" className="rounded-xl md:rounded-[2rem] px-4 md:px-8 h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-lg font-bold gap-2 whitespace-nowrap text-xs md:text-sm shrink-0">
+              <PlusCircle className="h-3 w-3 md:h-4 md:w-4" /> Log Meal
             </TabsTrigger>
-            <TabsTrigger value="plan" className="rounded-[2rem] px-8 h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-lg font-bold gap-2">
-              <Sparkles className="h-4 w-4" /> AI Plan
+            <TabsTrigger value="plan" className="rounded-xl md:rounded-[2rem] px-4 md:px-8 h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-lg font-bold gap-2 whitespace-nowrap text-xs md:text-sm shrink-0">
+              <Sparkles className="h-3 w-3 md:h-4 md:w-4" /> AI Plan
             </TabsTrigger>
-            <TabsTrigger value="insights" className="rounded-[2rem] px-8 h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-lg font-bold gap-2">
-              <BarChart3 className="h-4 w-4" /> Insights
+            <TabsTrigger value="insights" className="rounded-xl md:rounded-[2rem] px-4 md:px-8 h-full data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-lg font-bold gap-2 whitespace-nowrap text-xs md:text-sm shrink-0">
+              <BarChart3 className="h-3 w-3 md:h-4 md:w-4" /> Insights
             </TabsTrigger>
           </TabsList>
 

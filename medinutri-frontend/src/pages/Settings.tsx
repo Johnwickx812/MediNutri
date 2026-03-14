@@ -50,7 +50,7 @@ export default function Settings() {
             <SettingsIcon className="h-7 w-7 text-primary" />
           </div>
           <div>
-            <h1 className="text-4xl font-black tracking-tighter text-white">
+            <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-white">
               {t.settings.settings}
             </h1>
             <p className="text-slate-400 font-bold">Manage your preferences and account</p>

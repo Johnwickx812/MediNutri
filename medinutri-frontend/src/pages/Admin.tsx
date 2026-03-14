@@ -70,7 +70,7 @@ const Admin = () => {
         <div className="container mx-auto p-4 md:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <h1 className="text-4xl font-extrabold tracking-tight italic bg-gradient-to-r from-primary via-purple-500 to-indigo-600 bg-clip-text text-transparent">
+                    <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight italic bg-gradient-to-r from-primary via-purple-500 to-indigo-600 bg-clip-text text-transparent">
                         Admin Command Center
                     </h1>
                     <p className="text-muted-foreground italic">Monitor platform activity and user engagement.</p>

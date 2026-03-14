@@ -58,7 +58,7 @@ const VerifyEmail = () => {
                     <div className="inline-flex h-20 w-20 items-center justify-center rounded-[2rem] bg-primary/10 border border-primary/20 shadow-2xl mb-4 group hover:scale-110 transition-transform duration-500">
                         <ShieldCheck className="h-10 w-10 text-primary group-hover:rotate-12 transition-transform" />
                     </div>
-                    <h1 className="text-4xl font-black tracking-tighter text-white">Verify Your Email</h1>
+                    <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-white">Verify Your Email</h1>
                     <p className="text-slate-400 font-bold px-4">
                         We've sent a 6-digit security code to <span className="text-primary">{user?.email}</span>
                     </p>
@@ -75,7 +75,7 @@ const VerifyEmail = () => {
                                         placeholder="0 0 0 0 0 0"
                                         value={code}
                                         onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                                        className="h-20 text-center text-4xl font-black tracking-[0.5em] bg-white/5 border-white/10 rounded-2xl focus:ring-primary/20 text-white placeholder:opacity-20"
+                                        className="h-16 md:h-20 text-center text-3xl md:text-4xl font-black tracking-[0.5em] bg-white/5 border-white/10 rounded-2xl focus:ring-primary/20 text-white placeholder:opacity-20"
                                         autoFocus
                                     />
                                 </div>

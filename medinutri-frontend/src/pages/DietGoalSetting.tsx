@@ -152,7 +152,7 @@ const DietGoalSetting = () => {
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 py-12">
             <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="text-center space-y-2">
-                    <h1 className="text-4xl font-black tracking-tight dark:text-white">Diet & Health Profile</h1>
+                    <h1 className="text-3xl md:text-4xl font-black tracking-tight dark:text-white">Diet & Health Profile</h1>
                     <p className="text-slate-500 font-medium">Configure your nutrition goals and safety preferences</p>
                 </div>
 
@@ -365,7 +365,7 @@ const DietGoalSetting = () => {
                             </CardHeader>
                             <CardContent className="p-8 space-y-8">
                                 <div className="text-center space-y-1">
-                                    <p className="text-6xl font-black tracking-tighter">{targets.calories}</p>
+                                    <p className="text-5xl md:text-6xl font-black tracking-tighter">{targets.calories}</p>
                                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/60">Daily Kcal Goal</p>
                                 </div>
 

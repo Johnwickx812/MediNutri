@@ -455,7 +455,7 @@ export default function Diet() {
                 <CardContent className="p-8 pt-0 flex flex-col items-center justify-center space-y-4">
                   <div className="text-center">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg Calories</p>
-                    <p className="text-6xl font-black text-primary">1,745</p>
+                    <p className="text-5xl md:text-6xl font-black text-primary">1,745</p>
                     <p className="text-xs font-bold text-emerald-500 mt-2">Within Target Range ✓</p>
                   </div>
                   <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden mt-4">

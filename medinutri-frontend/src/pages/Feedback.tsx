@@ -80,7 +80,7 @@ const Feedback = () => {
                 <div className="inline-flex items-center justify-center p-3 mb-4 rounded-2xl bg-primary/10 text-primary">
                     <MessageSquare className="w-8 h-8" />
                 </div>
-                <h1 className="text-4xl font-bold tracking-tight mb-4 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
                     {t.feedback.title}
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">

@@ -129,7 +129,7 @@ const Profile = () => {
                                 accept="image/*"
                                 onChange={handleImageUpload}
                             />
-                            <div className="relative h-48 w-48 rounded-full p-1 bg-gradient-to-br from-primary/50 to-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.2)] group-hover:scale-105 transition-transform duration-500">
+                            <div className="relative h-32 w-32 md:h-48 md:w-48 rounded-full p-1 bg-gradient-to-br from-primary/50 to-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.2)] group-hover:scale-105 transition-transform duration-500">
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
                                     className="relative h-full w-full rounded-full overflow-hidden bg-slate-900 border-2 border-slate-950 flex items-center justify-center text-white"
@@ -137,7 +137,7 @@ const Profile = () => {
                                     {user?.profileImage ? (
                                         <img src={user.profileImage} alt="Profile" className="h-full w-full object-cover" />
                                     ) : (
-                                        <User className="h-20 w-20 text-slate-700" />
+                                        <User className="h-16 w-16 md:h-20 md:w-20 text-slate-700" />
                                     )}
                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Camera className="h-10 w-10 text-white" />
@@ -150,7 +150,7 @@ const Profile = () => {
                         <div className="space-y-8 flex-1 text-center md:text-left">
                             <div className="space-y-2">
                                 <div className="flex flex-col md:flex-row md:items-baseline md:gap-6 items-center justify-center md:justify-start">
-                                    <h1 className="text-8xl font-black tracking-tighter text-white lowercase">
+                                    <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white lowercase">
                                         {user?.name?.split(' ')[0]}
                                     </h1>
                                     <Link to="/complete-profile">
@@ -247,10 +247,10 @@ const Profile = () => {
                         <section>
                             <div className="flex items-center justify-between mb-8 px-2">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-12 w-12 rounded-[1.5rem] bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                                        <Activity className="h-6 w-6 text-orange-500" />
+                                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-[1rem] md:rounded-[1.5rem] bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+                                        <Activity className="h-5 w-5 md:h-6 md:w-6 text-orange-500" />
                                     </div>
-                                    <h2 className="text-4xl font-black tracking-tight text-white">{t.auth.healthSummary}</h2>
+                                    <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white">{t.auth.healthSummary}</h2>
                                 </div>
                             </div>
 
@@ -267,8 +267,8 @@ const Profile = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-baseline gap-2 mb-6">
-                                            <span className="text-6xl font-black text-white">{Math.round(calories)}</span>
-                                            <span className="text-slate-400 font-black text-lg">/ {calorieGoal} kcal</span>
+                                            <span className="text-4xl md:text-6xl font-black text-white">{Math.round(calories)}</span>
+                                            <span className="text-slate-400 font-black text-base md:text-lg">/ {calorieGoal} kcal</span>
                                         </div>
                                         <div className="space-y-3">
                                             <Progress value={calPercentage} className="h-4 bg-white/5 rounded-full" />
@@ -292,8 +292,8 @@ const Profile = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-baseline gap-2 mb-6">
-                                            <span className="text-6xl font-black text-white">{Math.round(protein)}g</span>
-                                            <span className="text-slate-400 font-black text-lg">/ {proteinGoal}g</span>
+                                            <span className="text-4xl md:text-6xl font-black text-white">{Math.round(protein)}g</span>
+                                            <span className="text-slate-400 font-black text-base md:text-lg">/ {proteinGoal}g</span>
                                         </div>
                                         <div className="space-y-3">
                                             <Progress value={proteinPercentage} className="h-4 bg-white/5 rounded-full" />
@@ -309,10 +309,10 @@ const Profile = () => {
 
                         <section className="mt-12">
                             <div className="flex items-center gap-3 mb-8 px-2">
-                                <div className="h-12 w-12 rounded-[1.5rem] bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                                    <User className="h-6 w-6 text-blue-400" />
+                                <div className="h-10 w-10 md:h-12 w-12 rounded-[1rem] md:rounded-[1.5rem] bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                                    <User className="h-5 w-5 md:h-6 md:w-6 text-blue-400" />
                                 </div>
-                                <h2 className="text-4xl font-black tracking-tight text-white uppercase">Personal Health Profile</h2>
+                                <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white uppercase">Personal Health Profile</h2>
                             </div>
 
                             <Card className="border border-white/10 shadow-3xl bg-slate-900/60 backdrop-blur-xl rounded-[3.5rem] overflow-hidden">
@@ -391,10 +391,10 @@ const Profile = () => {
 
                         <section>
                             <div className="flex items-center gap-3 mb-8 px-2">
-                                <div className="h-12 w-12 rounded-[1.5rem] bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                                    <Utensils className="h-6 w-6 text-emerald-500" />
+                                <div className="h-10 w-10 md:h-12 md:w-12 rounded-[1rem] md:rounded-[1.5rem] bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                                    <Utensils className="h-5 w-5 md:h-6 md:w-6 text-emerald-500" />
                                 </div>
-                                <h2 className="text-4xl font-black tracking-tight text-white">{t.auth.recentMeals}</h2>
+                                <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white">{t.auth.recentMeals}</h2>
                             </div>
 
                             {todaysMeals.length > 0 ? (
@@ -404,7 +404,7 @@ const Profile = () => {
                                             key={meal.id}
                                             className="flex items-center gap-6 p-8 bg-slate-900/40 backdrop-blur-sm rounded-[3rem] border border-white/5 shadow-xl transition-all"
                                         >
-                                            <div className="h-20 w-20 rounded-[2rem] bg-gradient-to-br from-white/5 to-white/10 flex items-center justify-center border border-white/10 shrink-0">
+                                            <div className="h-16 w-16 md:h-20 md:w-20 rounded-[1.5rem] md:rounded-[2rem] bg-gradient-to-br from-white/5 to-white/10 flex items-center justify-center border border-white/10 shrink-0">
                                                 <Utensils className="h-10 w-10 text-emerald-400" />
                                             </div>
                                             <div className="flex-1 min-w-0">
@@ -441,10 +441,10 @@ const Profile = () => {
                     <div className="lg:col-span-4 space-y-12">
                         <section>
                             <div className="flex items-center gap-3 mb-8 px-2">
-                                <div className="h-12 w-12 rounded-[1.5rem] bg-primary/10 flex items-center justify-center border border-primary/20">
-                                    <Pill className="h-6 w-6 text-primary" />
+                                <div className="h-10 w-10 md:h-12 md:w-12 rounded-[1rem] md:rounded-[1.5rem] bg-primary/10 flex items-center justify-center border border-primary/20">
+                                    <Pill className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                                 </div>
-                                <h2 className="text-4xl font-black tracking-tight text-white mb-0">{t.auth.activeMedications}</h2>
+                                <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-0">{t.auth.activeMedications}</h2>
                             </div>
 
                             {userMedications.length > 0 ? (

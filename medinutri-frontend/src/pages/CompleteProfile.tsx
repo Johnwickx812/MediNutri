@@ -101,7 +101,7 @@ const CompleteProfile = () => {
 
             <div className="w-full max-w-4xl relative z-10 space-y-8 animate-in fade-in zoom-in duration-700">
                 <div className="text-center space-y-4">
-                    <h1 className="text-5xl font-black tracking-tighter text-white">Let's Personalize Your Health</h1>
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white">Let's Personalize Your Health</h1>
                     <p className="text-slate-400 font-bold max-w-2xl mx-auto">
                         We need a few details to calculate your nutritional needs, check drug interactions, and keep you safe.
                     </p>

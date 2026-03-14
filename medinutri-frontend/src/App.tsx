@@ -21,6 +21,10 @@ import DietGoalSetting from "./pages/DietGoalSetting";
 import Admin from "./pages/Admin";
 import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
+import About from "./pages/About";
+import FeaturesPage from "./pages/FeaturesPage";
+import HowItWorks from "./pages/HowItWorks";
+import FAQ from "./pages/FAQ";
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Login from "./pages/Login";
@@ -72,6 +76,10 @@ const AppRoutes = () => {
           <Route path="/ai-assistant" element={<AIAssistant />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/faq" element={<FAQ />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       )}
